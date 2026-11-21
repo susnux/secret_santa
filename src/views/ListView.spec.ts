@@ -74,6 +74,33 @@ describe('ListView', () => {
 		expect(replace).toHaveBeenCalledWith({ name: 'not-found' })
 	})
 
+	it('ignores the data of a list loaded after another list was opened', async () => {
+		api.fetchLists.mockResolvedValue([list, createTestList({ id: '11', name: 'Birthday' })])
+		let resolveFirst: (value: unknown) => void = () => {}
+		api.fetchParticipants.mockImplementation((listId: string) => listId === '10'
+			? new Promise((resolve) => {
+					resolveFirst = resolve
+				})
+			: Promise.resolve([createTestGuest('2', 'Bob')]))
+		const wrapper = await mountView('10')
+
+		await wrapper.setProps({ listId: '11' })
+		await flushPromises()
+		resolveFirst([createTestGuest('1', 'Alice')])
+		await flushPromises()
+
+		expect(wrapper.find('h2').text()).toBe('Birthday')
+		expect(wrapper.findComponent({ name: 'ParticipantsSection' }).props('participants')).toEqual([createTestGuest('2', 'Bob')])
+	})
+
+	it('shows an error if the lists could not be loaded', async () => {
+		api.fetchLists.mockRejectedValue(createOcsError(500))
+
+		const wrapper = await mountView('10')
+
+		expect(wrapper.text()).toContain('Could not load the list.')
+	})
+
 	it('shows an error if the list could not be loaded', async () => {
 		api.fetchDraws.mockRejectedValue(createOcsError(500))
 

@@ -71,6 +71,17 @@ describe('MailSection', () => {
 		expect(wrapper.emitted('update:list')).toEqual([[updated]])
 	})
 
+	it('keeps unsaved changes when the list is renamed', async () => {
+		const wrapper = mountSection()
+		await wrapper.findAllComponents(NcTextField)[1]!.vm.$emit('update:modelValue', 'Unsaved')
+
+		await wrapper.setProps({ list: { ...list, name: 'Renamed' } })
+		expect(wrapper.findAllComponents(NcTextField)[1]!.props('modelValue')).toBe('Unsaved')
+
+		await wrapper.setProps({ list: createTestList({ id: '11', mailSubject: 'Other list' }) })
+		expect(wrapper.findAllComponents(NcTextField)[1]!.props('modelValue')).toBe('Other list')
+	})
+
 	it('shows the error of the server', async () => {
 		updateList.mockRejectedValue(createOcsError(400, 'The partner can only be mentioned in the text of the email.'))
 		const wrapper = mountSection()

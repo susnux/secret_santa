@@ -30,11 +30,19 @@ const senderName = ref('')
 const mailSubject = ref('')
 const mailBody = ref('')
 
-watch(() => props.list, (list) => {
+/**
+ * Show the email of the list in the form
+ *
+ * @param list - The list
+ */
+function reset(list: ISecretSantaList) {
 	senderName.value = list.senderName ?? ''
 	mailSubject.value = list.mailSubject
 	mailBody.value = list.mailBody
-}, { immediate: true })
+}
+
+// Only reset for another list, so renaming the list keeps unsaved changes
+watch(() => props.list.id, () => reset(props.list), { immediate: true })
 
 const changed = computed(() => senderName.value !== (props.list.senderName ?? '')
 	|| mailSubject.value !== props.list.mailSubject
@@ -71,6 +79,7 @@ async function save() {
 			mailBody: mailBody.value,
 		})
 		emit('update:list', list)
+		reset(list)
 		savedMessage.value = t('secret_santa', 'Email saved')
 	} catch (e) {
 		logger.error('Failed to save the email', { error: e })

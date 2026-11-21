@@ -34,9 +34,12 @@ const draws = ref<IDraw[]>([])
 const loading = ref(true)
 const failed = ref(false)
 
-watch(() => props.listId, async () => {
+watch(() => props.listId, async (listId) => {
 	loading.value = true
 	await store.ready
+	if (listId !== props.listId) {
+		return
+	}
 	if (store.loaded && !list.value) {
 		router.replace({ name: 'not-found' })
 		return
@@ -45,12 +48,14 @@ watch(() => props.listId, async () => {
 }, { immediate: true })
 
 /**
- * Load the participants, exclusions and draws of the list
+ * Load the participants, exclusions and draws of the list.
+ *
+ * The result is ignored if another list was opened in the meantime.
  */
 async function load() {
+	const listId = props.listId
 	failed.value = false
 	try {
-		const listId = props.listId
 		const [newParticipants, newExclusions, newDraws] = await Promise.all([
 			fetchParticipants(listId),
 			fetchExclusions(listId),
@@ -63,25 +68,27 @@ async function load() {
 		exclusions.value = newExclusions
 		draws.value = newDraws
 	} catch (error) {
+		if (listId !== props.listId) {
+			return
+		}
 		if (isNotFoundError(error)) {
 			router.replace({ name: 'not-found' })
 			return
 		}
 		logger.error('Failed to load the list', { error })
 		failed.value = true
-	} finally {
-		loading.value = false
 	}
+	loading.value = false
 }
 </script>
 
 <template>
-	<NcEmptyContent v-if="loading || !list" :name="t('secret_santa', 'Loading list …')">
+	<NcNoteCard v-if="failed || (store.failed && !list)" type="error" :text="t('secret_santa', 'Could not load the list.')" />
+	<NcEmptyContent v-else-if="loading || !list" :name="t('secret_santa', 'Loading list …')">
 		<template #icon>
 			<NcLoadingIcon />
 		</template>
 	</NcEmptyContent>
-	<NcNoteCard v-else-if="failed" type="error" :text="t('secret_santa', 'Could not load the list.')" />
 	<main v-else :class="$style.listView">
 		<h2 :class="$style.listView__heading">
 			{{ list.name }}
