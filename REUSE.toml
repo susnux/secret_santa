@@ -16,3 +16,9 @@ path = ["tsconfig.json", ".github/renovate.json", "CLAUDE.md"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Ferdinand Thiessen <opensource@fthiessen.de>"
 SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = ["l10n/**", "translationfiles/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Ferdinand Thiessen <opensource@fthiessen.de>"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
