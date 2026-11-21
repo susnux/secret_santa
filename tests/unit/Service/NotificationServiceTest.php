@@ -50,7 +50,7 @@ final class NotificationServiceTest extends TestCase {
 
 	#[\Override]
 	protected function tearDown(): void {
-		$this->listService->deleteByOwner(self::OWNER);
+		$this->listService->removeOwner(self::OWNER);
 		$this->owner->delete();
 		parent::tearDown();
 	}
@@ -101,6 +101,15 @@ final class NotificationServiceTest extends TestCase {
 		$this->assertSame([Util::getDefaultEmailAddress('noreply') => 'Olivia Owner'], $this->messages[0]->getFrom());
 		$this->assertSame([], $this->messages[0]->getReplyTo());
 		$this->assertStringContainsString('please do not reply', $this->messages[0]->getPlainBody());
+	}
+
+	public function testSenderOfListWithoutOwner(): void {
+		$this->list->setOwner(null);
+
+		$this->createService()->send($this->list, new Recipient('Alice', 'alice@example.com'), new Recipient('Bob', 'bob@example.com'));
+
+		$this->assertSame([Util::getDefaultEmailAddress('noreply') => 'translated: Secret Santa'], $this->messages[0]->getFrom());
+		$this->assertSame([], $this->messages[0]->getReplyTo());
 	}
 
 	public function testPlaceholdersInNamesAreNotReplaced(): void {

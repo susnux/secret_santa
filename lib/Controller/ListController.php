@@ -17,6 +17,7 @@ use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCS\OCSBadRequestException;
+use OCP\AppFramework\OCS\OCSForbiddenException;
 use OCP\AppFramework\OCS\OCSNotFoundException;
 
 /**
@@ -27,7 +28,7 @@ use OCP\AppFramework\OCS\OCSNotFoundException;
 final class ListController extends BaseOCSController {
 
 	/**
-	 * Get all lists of the current user
+	 * Get the lists the current user owns or that are shared with their groups
 	 *
 	 * @return DataResponse<Http::STATUS_OK, list<SecretSantaList>, array{}>
 	 *
@@ -41,7 +42,7 @@ final class ListController extends BaseOCSController {
 		}
 		return new DataResponse(array_map(
 			$this->listService->serialize(...),
-			$this->listService->getByOwner($this->userId),
+			$this->listService->getAccessible($this->userId),
 		));
 	}
 
@@ -73,11 +74,11 @@ final class ListController extends BaseOCSController {
 	}
 
 	/**
-	 * Get a list of the current user
+	 * Get a list the current user can access
 	 *
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 200: List returned
 	 */
@@ -99,7 +100,7 @@ final class ListController extends BaseOCSController {
 	 * @param ?string $mailBody The text of the email (up to 10000 characters), `{name}` and `{partner}` are replaced by the names of the participant and their partner
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
 	 * @throws OCSBadRequestException Invalid values or the list is archived
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 200: List changed
 	 */
@@ -131,7 +132,7 @@ final class ListController extends BaseOCSController {
 	 *
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 200: List archived
 	 */
@@ -147,7 +148,7 @@ final class ListController extends BaseOCSController {
 	 *
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 200: List unarchived
 	 */
@@ -161,16 +162,19 @@ final class ListController extends BaseOCSController {
 	/**
 	 * Delete a list including its participants
 	 *
+	 * Only the owner of the list can delete it.
+	 *
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_OK, null, array{}>
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSForbiddenException The current user is not the owner of the list
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 200: List deleted
 	 */
 	#[NoAdminRequired]
 	#[ApiRoute(verb: 'DELETE', url: '/api/v1/lists/{listId}', requirements: ['listId' => '\d+'])]
 	public function deleteList(string $listId): DataResponse {
-		$this->listService->delete($this->findList($listId));
+		$this->listService->delete($this->findOwnedList($listId));
 		return new DataResponse(null);
 	}
 }

@@ -11,6 +11,9 @@ namespace OCA\SecretSanta;
 
 /**
  * Ids are Snowflake IDs, sent as strings as they exceed the safe integer range of JavaScript.
+ * `owner` is the user who created the list, only they can delete and share it. Members of the groups the list
+ * is shared with can change everything else. `owner` and `ownerDisplayName` are null if the owner was deleted
+ * while the list was shared.
  * `senderName` is the display name of the sender of the emails, the display name of the owner is used if it is null.
  * `mailSubject` and `mailBody` are the email sent to every participant, `{name}` is replaced by the name of the
  * participant and, only in `mailBody`, `{partner}` by the name of the participant to give a gift to.
@@ -21,6 +24,8 @@ namespace OCA\SecretSanta;
  *
  * @psalm-type SecretSantaList = array{
  *     id: string,
+ *     owner: ?string,
+ *     ownerDisplayName: ?string,
  *     name: string,
  *     senderName: ?string,
  *     mailSubject: string,
@@ -66,6 +71,13 @@ namespace OCA\SecretSanta;
  *     createdAt: int,
  *     outdated: bool,
  *     notifications: list<SecretSantaNotification>,
+ * }
+ *
+ * The list is shared with the group `groupId`, all members of the group can change the list.
+ *
+ * @psalm-type SecretSantaShare = array{
+ *     groupId: string,
+ *     displayName: string,
  * }
  *
  * @psalm-suppress UnusedClass Only used as a container for the response type definitions

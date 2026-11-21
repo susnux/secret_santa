@@ -48,7 +48,7 @@ final class ExclusionController extends BaseOCSController {
 	 *
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_OK, list<SecretSantaExclusion>, array{}>
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 200: Exclusions returned
 	 */
@@ -73,7 +73,7 @@ final class ExclusionController extends BaseOCSController {
 	 * @param bool $mutual Apply the changes in the other direction as well
 	 * @return DataResponse<Http::STATUS_OK, list<SecretSantaExclusion>, array{}>
 	 * @throws OCSBadRequestException A receiver is not a participant of the list or the participant themselves, or the list is archived
-	 * @throws OCSNotFoundException List or participant not found or the list is not owned by the current user
+	 * @throws OCSNotFoundException List or participant not found or the list is not accessible by the current user
 	 *
 	 * 200: Exclusions changed, all exclusions of the list are returned
 	 */
@@ -102,7 +102,7 @@ final class ExclusionController extends BaseOCSController {
 	 * @param string $sourceListId The id of the list whose latest draw is imported
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
 	 * @throws OCSBadRequestException The partners of the source list have not been drawn yet or the list is archived
-	 * @throws OCSNotFoundException List or source list not found or not owned by the current user
+	 * @throws OCSNotFoundException List or source list not found or not accessible by the current user
 	 *
 	 * 200: Exclusions imported, the list is returned
 	 */
@@ -115,8 +115,6 @@ final class ExclusionController extends BaseOCSController {
 			$list = $this->exclusionService->importDraw($list, $source);
 		} catch (InvalidInputException $error) {
 			throw new OCSBadRequestException($error->getHint());
-		} catch (InvalidArgumentException $error) {
-			throw new OCSBadRequestException($error->getMessage());
 		}
 		return new DataResponse($this->listService->serialize($list));
 	}
@@ -127,7 +125,7 @@ final class ExclusionController extends BaseOCSController {
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
 	 * @throws OCSBadRequestException The list is archived
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 200: Imported exclusions removed, the list is returned
 	 */

@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace OCA\SecretSanta\Tests\Unit\Service;
 
-use InvalidArgumentException;
 use OCA\SecretSanta\Db\Draw;
 use OCA\SecretSanta\Db\DrawMapper;
 use OCA\SecretSanta\Db\Exclusion;
@@ -51,7 +50,7 @@ final class ExclusionServiceTest extends TestCase {
 
 	#[\Override]
 	protected function tearDown(): void {
-		$this->listService->deleteByOwner(self::OWNER);
+		$this->listService->removeOwner(self::OWNER);
 		parent::tearDown();
 	}
 
@@ -253,15 +252,19 @@ final class ExclusionServiceTest extends TestCase {
 		$this->assertNotTrue($this->listService->get($this->list->getId(), self::OWNER)->getExclusionsImported());
 	}
 
-	public function testImportFromAnotherOwnerIsRefused(): void {
+	public function testImportFromListOfAnotherOwner(): void {
 		$other = $this->listService->create(self::OWNER . '-other', 'Other');
 		try {
-			$this->storeDraw($other, []);
+			foreach (['alice', 'bob'] as $name) {
+				$this->participantService->addGuest($other, $name, $name . '@example.com');
+			}
+			$this->storeDraw($other, ['alice' => 'bob', 'bob' => 'alice']);
 
-			$this->expectException(InvalidArgumentException::class);
 			$this->service->importDraw($this->list, $other);
+
+			$this->assertSame(['alice>bob', 'bob>alice'], $this->getImported());
 		} finally {
-			$this->listService->deleteByOwner(self::OWNER . '-other');
+			$this->listService->delete($other);
 		}
 	}
 

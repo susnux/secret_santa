@@ -6,7 +6,7 @@
 <script setup lang="ts">
 import type { ISecretSantaList } from '../models/types.ts'
 
-import { mdiAlertCircleOutline, mdiArchiveOutline, mdiGiftOutline, mdiPencil, mdiPlus, mdiTrashCan } from '@mdi/js'
+import { mdiAccountGroupOutline, mdiAlertCircleOutline, mdiArchiveOutline, mdiGiftOutline, mdiPencil, mdiPlus, mdiTrashCan } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
 import { spawnDialog } from '@nextcloud/vue/functions/dialog'
 import { computed } from 'vue'
@@ -22,12 +22,28 @@ import ArchiveListDialog from '../components/ArchiveListDialog.vue'
 import DeleteListDialog from '../components/DeleteListDialog.vue'
 import ListDialog from '../components/ListDialog.vue'
 import { useListsStore } from '../store/lists.ts'
+import { PLAIN_TEXT } from '../utils/l10n.ts'
+import { isOwnList } from '../utils/lists.ts'
 
 const store = useListsStore()
 const route = useRoute()
 const router = useRouter()
 
 const archivedListOpen = computed(() => store.archivedLists.some(({ id }) => id === route.params.listId))
+
+/**
+ * Get the hint shown for lists of other users
+ *
+ * @param list - The list
+ */
+function getSharedHint(list: ISecretSantaList): string | undefined {
+	if (isOwnList(list)) {
+		return undefined
+	}
+	return list.ownerDisplayName === null
+		? t('secret_santa', 'Shared with you')
+		: t('secret_santa', 'Shared by {owner}', { owner: list.ownerDisplayName }, PLAIN_TEXT)
+}
 
 /**
  * Show the dialog to create a new list and open the created list
@@ -99,9 +115,10 @@ async function remove(list: ISecretSantaList) {
 				v-for="list in store.activeLists"
 				:key="list.id"
 				:name="list.name"
+				:title="getSharedHint(list)"
 				:to="{ name: 'list', params: { listId: list.id } }">
 				<template #icon>
-					<NcIconSvgWrapper :path="mdiGiftOutline" />
+					<NcIconSvgWrapper :path="isOwnList(list) ? mdiGiftOutline : mdiAccountGroupOutline" />
 				</template>
 				<template #actions>
 					<NcActionButton closeAfterClick @click="rename(list)">
@@ -116,7 +133,7 @@ async function remove(list: ISecretSantaList) {
 						</template>
 						{{ t('secret_santa', 'Archive') }}
 					</NcActionButton>
-					<NcActionButton closeAfterClick @click="remove(list)">
+					<NcActionButton v-if="isOwnList(list)" closeAfterClick @click="remove(list)">
 						<template #icon>
 							<NcIconSvgWrapper :path="mdiTrashCan" />
 						</template>

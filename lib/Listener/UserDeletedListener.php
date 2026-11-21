@@ -16,7 +16,7 @@ use OCP\EventDispatcher\IEventListener;
 use OCP\User\Events\UserDeletedEvent;
 
 /**
- * Delete the lists of deleted users and remove them from the lists of other users
+ * Delete the lists of deleted users, or keep them without owner if they are shared, and remove the users from the lists of other users
  *
  * @template-implements IEventListener<UserDeletedEvent>
  */
@@ -35,7 +35,7 @@ final class UserDeletedListener implements IEventListener {
 	#[\Override]
 	public function handle(Event $event): void {
 		$userId = $event->getUser()->getUID();
-		$this->listService->deleteByOwner($userId);
+		$this->listService->removeOwner($userId);
 		$this->participantService->deleteByUser($userId);
 	}
 }

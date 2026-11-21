@@ -6,7 +6,6 @@
 <script setup lang="ts">
 import type { IParticipant, ISecretSantaList } from '../models/types.ts'
 
-import { getCurrentUser } from '@nextcloud/auth'
 import { t } from '@nextcloud/l10n'
 import { computed, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -15,6 +14,8 @@ import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { updateList } from '../api/index.ts'
 import { getOcsErrorMessage } from '../utils/errors.ts'
+import { PLAIN_TEXT } from '../utils/l10n.ts'
+import { isOwnList } from '../utils/lists.ts'
 import logger from '../utils/logger.ts'
 
 const props = defineProps<{
@@ -46,6 +47,16 @@ function reset(list: ISecretSantaList) {
 // Only reset for another list, so renaming the list keeps unsaved changes
 watch(() => props.list.id, () => reset(props.list), { immediate: true })
 
+const senderHelperText = computed(() => {
+	if (isOwnList(props.list)) {
+		return t('secret_santa', 'Your name is used if empty.')
+	}
+	if (props.list.ownerDisplayName !== null) {
+		return t('secret_santa', 'The name of the owner {owner} is used if empty.', { owner: props.list.ownerDisplayName }, PLAIN_TEXT)
+	}
+	return t('secret_santa', '"Secret Santa" is used if empty.')
+})
+
 const changed = computed(() => senderName.value !== (props.list.senderName ?? '')
 	|| mailSubject.value !== props.list.mailSubject
 	|| mailBody.value !== props.list.mailBody)
@@ -57,7 +68,7 @@ const preview = computed(() => {
 	const name = props.participants[0]?.displayName ?? t('secret_santa', 'Alice')
 	const partner = props.participants[1]?.displayName ?? t('secret_santa', 'Bob')
 	return {
-		sender: senderName.value.trim() || getCurrentUser()?.displayName || '',
+		sender: senderName.value.trim() || props.list.ownerDisplayName || t('secret_santa', 'Secret Santa'),
 		subject: mailSubject.value.replaceAll('{name}', name),
 		body: mailBody.value.replace(/\{(name|partner)\}/g, (placeholder) => placeholder === '{name}' ? name : partner),
 	}
@@ -102,7 +113,7 @@ async function save() {
 				v-model="senderName"
 				:maxlength="255"
 				:label="t('secret_santa', 'Sender name')"
-				:helperText="t('secret_santa', 'Your name is used if empty.')" />
+				:helperText="senderHelperText" />
 			<NcTextField
 				v-model="mailSubject"
 				required

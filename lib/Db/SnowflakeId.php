@@ -25,4 +25,13 @@ final class SnowflakeId {
 		}
 		return strlen($id) < strlen(self::MAX) || strcmp($id, self::MAX) <= 0;
 	}
+
+	/**
+	 * Compare two valid ids numerically, as they can exceed the integer range of PHP on 32 bit systems.
+	 *
+	 * @return int A negative number, zero or a positive number if the first id is smaller, equal or larger
+	 */
+	public static function compare(string $a, string $b): int {
+		return strlen($a) <=> strlen($b) ?: strcmp($a, $b);
+	}
 }

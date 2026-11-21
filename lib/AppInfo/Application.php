@@ -9,11 +9,13 @@ declare(strict_types=1);
 
 namespace OCA\SecretSanta\AppInfo;
 
+use OCA\SecretSanta\Listener\GroupDeletedListener;
 use OCA\SecretSanta\Listener\UserDeletedListener;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Group\Events\GroupDeletedEvent;
 use OCP\User\Events\UserDeletedEvent;
 
 /**
@@ -30,6 +32,7 @@ final class Application extends App implements IBootstrap {
 	#[\Override]
 	public function register(IRegistrationContext $context): void {
 		$context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
+		$context->registerEventListener(GroupDeletedEvent::class, GroupDeletedListener::class);
 	}
 
 	#[\Override]

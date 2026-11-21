@@ -18,13 +18,16 @@ use Psr\Http\Message\ResponseInterface;
  * Base class for tests that send requests to a running Nextcloud instance with the app enabled.
  *
  * The instance is configured with the `NEXTCLOUD_URL`, `NEXTCLOUD_ADMIN_USER` and `NEXTCLOUD_ADMIN_PASSWORD`
- * environment variables. Users created with `createUser()` are deleted after each test, which also deletes their lists.
+ * environment variables. Users created with `createUser()` are deleted after each test, which also deletes their lists
+ * unless they are shared. Groups created with `createGroup()` are deleted after each test, after the users.
  */
 abstract class IntegrationTestCase extends TestCase {
 
 	private Client $client;
 	/** @var array<string, string> user id => password */
 	private array $users = [];
+	/** @var list<string> */
+	private array $groups = [];
 
 	#[\Override]
 	protected function setUp(): void {
@@ -46,6 +49,11 @@ abstract class IntegrationTestCase extends TestCase {
 			$this->assertSame(200, $response->getStatusCode(), 'Failed to delete test user ' . $userId);
 		}
 		$this->users = [];
+		foreach ($this->groups as $groupId) {
+			$response = $this->adminRequest('DELETE', 'ocs/v2.php/cloud/groups/' . rawurlencode($groupId));
+			$this->assertSame(200, $response->getStatusCode(), 'Failed to delete test group ' . $groupId);
+		}
+		$this->groups = [];
 		parent::tearDown();
 	}
 
@@ -64,6 +72,38 @@ abstract class IntegrationTestCase extends TestCase {
 
 		$this->users[$userId] = $password;
 		return $userId;
+	}
+
+	/**
+	 * Create a group with a random id and the given members.
+	 *
+	 * @param list<string> $members The ids of the users to add to the group
+	 * @return string The group id
+	 */
+	protected function createGroup(array $members = []): string {
+		$groupId = 'secret-santa-test-' . bin2hex(random_bytes(6));
+		$response = $this->adminRequest('POST', 'ocs/v2.php/cloud/groups', [
+			RequestOptions::JSON => ['groupid' => $groupId],
+		]);
+		$this->assertSame(200, $response->getStatusCode(), 'Failed to create test group: ' . $response->getBody());
+		$this->groups[] = $groupId;
+
+		foreach ($members as $userId) {
+			$response = $this->adminRequest('POST', 'ocs/v2.php/cloud/users/' . rawurlencode($userId) . '/groups', [
+				RequestOptions::JSON => ['groupid' => $groupId],
+			]);
+			$this->assertSame(200, $response->getStatusCode(), 'Failed to add the user to the group: ' . $response->getBody());
+		}
+		return $groupId;
+	}
+
+	/**
+	 * Delete a group created by `createGroup()` before the end of the test.
+	 */
+	protected function deleteGroup(string $groupId): void {
+		$response = $this->adminRequest('DELETE', 'ocs/v2.php/cloud/groups/' . rawurlencode($groupId));
+		$this->assertSame(200, $response->getStatusCode(), 'Failed to delete test group ' . $groupId);
+		$this->groups = array_values(array_diff($this->groups, [$groupId]));
 	}
 
 	/**

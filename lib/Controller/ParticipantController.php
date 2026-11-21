@@ -31,7 +31,7 @@ final class ParticipantController extends BaseOCSController {
 	 *
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_OK, list<SecretSantaParticipant>, array{}>
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 200: Participants returned
 	 */
@@ -53,7 +53,7 @@ final class ParticipantController extends BaseOCSController {
 	 * @param ?string $email The email address of the guest to add (up to 255 characters)
 	 * @return DataResponse<Http::STATUS_CREATED, SecretSantaParticipant, array{}>
 	 * @throws OCSBadRequestException Unknown user, invalid values, already a participant, too many participants or the list is archived
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 201: Participant added
 	 */
@@ -63,7 +63,7 @@ final class ParticipantController extends BaseOCSController {
 		$list = $this->findEditableList($listId);
 		try {
 			if ($userId !== null) {
-				$participant = $this->participantService->addUser($list, $userId);
+				$participant = $this->participantService->addUser($list, $userId, (string)$this->userId);
 			} elseif ($displayName !== null && $email !== null) {
 				$participant = $this->participantService->addGuest($list, $displayName, $email);
 			} else {
@@ -86,7 +86,7 @@ final class ParticipantController extends BaseOCSController {
 	 * @param string $email The email address of the guest (up to 255 characters)
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaParticipant, array{}>
 	 * @throws OCSBadRequestException Invalid values, the participant is a Nextcloud user or the list is archived
-	 * @throws OCSNotFoundException List or participant not found or the list is not owned by the current user
+	 * @throws OCSNotFoundException List or participant not found or the list is not accessible by the current user
 	 *
 	 * 200: Participant changed
 	 */
@@ -112,7 +112,7 @@ final class ParticipantController extends BaseOCSController {
 	 * @param string $participantId The id of the participant
 	 * @return DataResponse<Http::STATUS_OK, null, array{}>
 	 * @throws OCSBadRequestException The list is archived
-	 * @throws OCSNotFoundException List or participant not found or the list is not owned by the current user
+	 * @throws OCSNotFoundException List or participant not found or the list is not accessible by the current user
 	 *
 	 * 200: Participant removed
 	 */

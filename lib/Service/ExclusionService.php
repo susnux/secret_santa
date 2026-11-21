@@ -111,15 +111,12 @@ final class ExclusionService {
 	 *
 	 * The source can be the list itself. Participants of both lists are matched by `ParticipantService::matchParticipants()`.
 	 * Nothing about the matched participants or partners is returned, only that exclusions were imported.
+	 * The caller must check that the current user can access both lists.
 	 *
 	 * @return SecretSantaList The list, marked as having imported exclusions
-	 * @throws InvalidArgumentException If the lists have different owners
 	 * @throws InvalidInputException If the partners of the source list have not been drawn yet
 	 */
 	public function importDraw(SecretSantaList $list, SecretSantaList $source): SecretSantaList {
-		if ($source->getOwner() !== $list->getOwner()) {
-			throw new InvalidArgumentException('Exclusions can only be imported from lists of the same owner.');
-		}
 		$draw = $this->drawMapper->getLatestDraw($source);
 		if ($draw === null) {
 			throw new InvalidInputException(

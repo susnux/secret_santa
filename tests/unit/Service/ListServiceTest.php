@@ -13,14 +13,19 @@ use OCA\SecretSanta\Db\DrawMapper;
 use OCA\SecretSanta\Db\ExclusionMapper;
 use OCA\SecretSanta\Db\PairingMapper;
 use OCA\SecretSanta\Db\ParticipantMapper;
+use OCA\SecretSanta\Db\SecretSantaList;
 use OCA\SecretSanta\Db\SecretSantaListMapper;
+use OCA\SecretSanta\Db\ShareMapper;
 use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\Service\ListService;
 use OCA\SecretSanta\Service\ParticipantService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IDBConnection;
+use OCP\IGroupManager;
 use OCP\IL10N;
+use OCP\IUser;
+use OCP\IUserManager;
 use OCP\Server;
 use PHPUnit\Framework\TestCase;
 
@@ -28,10 +33,14 @@ final class ListServiceTest extends TestCase {
 
 	private const string USER_ID = 'secret-santa-list-service-test';
 	private const string OTHER_USER_ID = 'secret-santa-list-service-test-other';
+	private const string MEMBER = 'secret-santa-list-service-test-member';
+	private const string GROUP = 'secret-santa-list-service-test-group';
 	private const int NOW = 1_800_000_000;
 
 	private ListService $service;
 	private ParticipantMapper $participantMapper;
+	private ShareMapper $shareMapper;
+	private SecretSantaListMapper $listMapper;
 
 	#[\Override]
 	protected function setUp(): void {
@@ -39,25 +48,57 @@ final class ListServiceTest extends TestCase {
 		$l10n = $this->createStub(IL10N::class);
 		$l10n->method('t')->willReturnCallback(static fn (string $text, array $parameters = []): string => 'translated: ' . vsprintf($text, $parameters));
 		$this->participantMapper = Server::get(ParticipantMapper::class);
+		$this->shareMapper = Server::get(ShareMapper::class);
+		$this->listMapper = Server::get(SecretSantaListMapper::class);
 		$timeFactory = $this->createStub(ITimeFactory::class);
 		$timeFactory->method('getTime')->willReturn(self::NOW);
 		$this->service = new ListService(
 			Server::get(IDBConnection::class),
 			$l10n,
-			Server::get(SecretSantaListMapper::class),
+			$this->listMapper,
 			$this->participantMapper,
 			Server::get(ExclusionMapper::class),
 			Server::get(DrawMapper::class),
 			Server::get(PairingMapper::class),
+			$this->shareMapper,
 			$timeFactory,
+			Server::get(IUserManager::class),
+			Server::get(IGroupManager::class),
 		);
 	}
 
 	#[\Override]
 	protected function tearDown(): void {
-		$this->service->deleteByOwner(self::USER_ID);
-		$this->service->deleteByOwner(self::OTHER_USER_ID);
+		foreach ([self::USER_ID, self::OTHER_USER_ID] as $owner) {
+			foreach ($this->listMapper->getListsByOwner($owner) as $list) {
+				$this->service->delete($list);
+			}
+		}
+		Server::get(IUserManager::class)->get(self::MEMBER)?->delete();
+		Server::get(IGroupManager::class)->get(self::GROUP)?->delete();
 		parent::tearDown();
+	}
+
+	/**
+	 * Create the user MEMBER in the group GROUP
+	 */
+	private function createMember(): IUser {
+		$userManager = Server::get(IUserManager::class);
+		$userManager->get(self::MEMBER)?->delete();
+		$member = $userManager->createUser(self::MEMBER, bin2hex(random_bytes(16)) . 'Aa1!');
+		$this->assertInstanceOf(IUser::class, $member);
+		$group = Server::get(IGroupManager::class)->createGroup(self::GROUP);
+		$this->assertNotNull($group);
+		$group->addUser($member);
+		return $member;
+	}
+
+	/**
+	 * @param list<SecretSantaList> $lists
+	 * @return list<string>
+	 */
+	private static function getIds(array $lists): array {
+		return array_map(static fn (SecretSantaList $list): string => $list->getId(), $lists);
 	}
 
 	public function testCreate(): void {
@@ -81,7 +122,7 @@ final class ListServiceTest extends TestCase {
 			$this->assertSame('The name of the list must not be empty.', $error->getMessage());
 			$this->assertSame('translated: The name of the list must not be empty.', $error->getHint());
 		}
-		$this->assertSame([], $this->service->getByOwner(self::USER_ID));
+		$this->assertSame([], $this->service->getAccessible(self::USER_ID));
 	}
 
 	public function testCreateRejectsTooLongName(): void {
@@ -102,15 +143,77 @@ final class ListServiceTest extends TestCase {
 		$this->service->get('99999999999999999999', self::USER_ID);
 	}
 
-	public function testGetByOwner(): void {
+	public function testGetListSharedWithAGroupOfTheUser(): void {
+		$this->createMember();
+		$list = $this->service->create(self::USER_ID, 'Christmas');
+		$this->shareMapper->insert($list, self::GROUP);
+
+		$this->assertSame($list->getId(), $this->service->get($list->getId(), self::MEMBER)->getId());
+		$this->expectException(DoesNotExistException::class);
+		$this->service->get($list->getId(), self::OTHER_USER_ID);
+	}
+
+	public function testGetRejectsListsSharedWithOtherGroups(): void {
+		$this->createMember();
+		$list = $this->service->create(self::USER_ID, 'Christmas');
+		$this->shareMapper->insert($list, self::GROUP . '-other');
+
+		$this->expectException(DoesNotExistException::class);
+		$this->service->get($list->getId(), self::MEMBER);
+	}
+
+	public function testGetAccessible(): void {
 		$first = $this->service->create(self::USER_ID, 'First');
 		$second = $this->service->create(self::USER_ID, 'Second');
 		$this->service->create(self::OTHER_USER_ID, 'Other');
 
-		$this->assertSame(
-			[$first->getId(), $second->getId()],
-			array_map(static fn ($list) => $list->getId(), $this->service->getByOwner(self::USER_ID)),
-		);
+		$this->assertSame([$first->getId(), $second->getId()], self::getIds($this->service->getAccessible(self::USER_ID)));
+	}
+
+	public function testGetAccessibleIncludesSharedListsOrderedById(): void {
+		$this->createMember();
+		$shared = $this->service->create(self::USER_ID, 'Shared');
+		$own = $this->service->create(self::MEMBER, 'Own');
+		$sharedAndOwn = $this->service->create(self::MEMBER, 'Own and shared');
+		$this->service->create(self::USER_ID, 'Not shared');
+		$this->shareMapper->insert($shared, self::GROUP);
+		$this->shareMapper->insert($sharedAndOwn, self::GROUP);
+
+		try {
+			$this->assertSame(
+				[$shared->getId(), $own->getId(), $sharedAndOwn->getId()],
+				self::getIds($this->service->getAccessible(self::MEMBER)),
+			);
+		} finally {
+			$this->service->delete($own);
+			$this->service->delete($sharedAndOwn);
+		}
+	}
+
+	public function testIsOwner(): void {
+		$list = $this->service->create(self::USER_ID, 'Christmas');
+
+		$this->assertTrue($this->service->isOwner($list, self::USER_ID));
+		$this->assertFalse($this->service->isOwner($list, self::OTHER_USER_ID));
+	}
+
+	public function testRemoveOwnerKeepsSharedListsWithoutOwner(): void {
+		$shared = $this->service->create(self::USER_ID, 'Shared');
+		$notShared = $this->service->create(self::USER_ID, 'Not shared');
+		$other = $this->service->create(self::OTHER_USER_ID, 'Other');
+		$this->shareMapper->insert($shared, self::GROUP);
+
+		$this->service->removeOwner(self::USER_ID);
+
+		$orphan = $this->listMapper->getList($shared->getId());
+		try {
+			$this->assertNull($orphan->getOwner());
+			$this->assertCount(1, $this->shareMapper->getShares($orphan));
+			$this->assertSame([], $this->listMapper->getListsByIds([$notShared->getId()]));
+			$this->assertSame(self::OTHER_USER_ID, $this->listMapper->getList($other->getId())->getOwner());
+		} finally {
+			$this->service->delete($orphan);
+		}
 	}
 
 	public function testUpdateOnlyChangesGivenValues(): void {
@@ -214,9 +317,21 @@ final class ListServiceTest extends TestCase {
 
 		$this->service->delete($list);
 
-		$this->assertSame([$other->getId()], array_map(static fn ($list) => $list->getId(), $this->service->getByOwner(self::USER_ID)));
+		$this->assertSame([$other->getId()], self::getIds($this->service->getAccessible(self::USER_ID)));
 		$this->assertSame([], $this->participantMapper->getParticipants($list));
 		$this->assertCount(1, $this->participantMapper->getParticipants($other));
+	}
+
+	public function testDeleteRemovesShares(): void {
+		$list = $this->service->create(self::USER_ID, 'Christmas');
+		$other = $this->service->create(self::USER_ID, 'Other');
+		$this->shareMapper->insert($list, self::GROUP);
+		$this->shareMapper->insert($other, self::GROUP);
+
+		$this->service->delete($list);
+
+		$this->assertSame([], $this->shareMapper->getShares($list));
+		$this->assertCount(1, $this->shareMapper->getShares($other));
 	}
 
 	public function testSerialize(): void {
@@ -224,6 +339,8 @@ final class ListServiceTest extends TestCase {
 
 		$this->assertSame([
 			'id' => $list->getId(),
+			'owner' => self::USER_ID,
+			'ownerDisplayName' => self::USER_ID,
 			'name' => 'Christmas',
 			'senderName' => null,
 			'mailSubject' => $list->getMailSubject(),
@@ -234,5 +351,24 @@ final class ListServiceTest extends TestCase {
 
 		$this->service->archive($list);
 		$this->assertSame(self::NOW, $this->service->serialize($list)['archivedAt']);
+	}
+
+	public function testSerializeOwner(): void {
+		$member = $this->createMember();
+		$member->setDisplayName('Mia Member');
+		$list = $this->service->create(self::MEMBER, 'Christmas');
+
+		try {
+			$serialized = $this->service->serialize($list);
+			$this->assertSame(self::MEMBER, $serialized['owner']);
+			$this->assertSame('Mia Member', $serialized['ownerDisplayName']);
+
+			$list->setOwner(null);
+			$serialized = $this->service->serialize($list);
+			$this->assertNull($serialized['owner']);
+			$this->assertNull($serialized['ownerDisplayName']);
+		} finally {
+			$this->service->delete($list);
+		}
 	}
 }

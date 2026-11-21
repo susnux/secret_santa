@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OCA\SecretSanta\Tests\Unit\Listener;
 
+use OCA\SecretSanta\Db\SecretSantaListMapper;
+use OCA\SecretSanta\Db\ShareMapper;
 use OCA\SecretSanta\Listener\UserDeletedListener;
 use OCA\SecretSanta\Service\ListService;
 use OCA\SecretSanta\Service\ParticipantService;
@@ -35,10 +37,26 @@ final class UserDeletedListenerTest extends TestCase {
 
 	#[\Override]
 	protected function tearDown(): void {
-		$this->listService->deleteByOwner(self::OWNER);
-		$this->listService->deleteByOwner(self::USER);
+		$this->listService->removeOwner(self::OWNER);
+		$this->listService->removeOwner(self::USER);
 		Server::get(IUserManager::class)->get(self::USER)?->delete();
 		parent::tearDown();
+	}
+
+	public function testKeepsSharedListsWithoutOwner(): void {
+		$user = Server::get(IUserManager::class)->createUser(self::USER, bin2hex(random_bytes(16)) . 'Aa1!');
+		$this->assertInstanceOf(IUser::class, $user);
+		$shared = $this->listService->create(self::USER, 'Shared list');
+		Server::get(ShareMapper::class)->insert($shared, 'secret-santa-listener-test-group');
+		$notShared = $this->listService->create(self::USER, 'Not shared list');
+
+		Server::get(UserDeletedListener::class)->handle(new UserDeletedEvent($user));
+
+		$listMapper = Server::get(SecretSantaListMapper::class);
+		$orphan = $listMapper->getList($shared->getId());
+		$this->listService->delete($orphan);
+		$this->assertNull($orphan->getOwner());
+		$this->assertSame([], $listMapper->getListsByIds([$notShared->getId()]));
 	}
 
 	public function testDeletesListsAndParticipations(): void {
@@ -47,12 +65,12 @@ final class UserDeletedListenerTest extends TestCase {
 		$ownList = $this->listService->create(self::USER, 'Own list');
 		$this->participantService->addGuest($ownList, 'Alice', 'alice@example.com');
 		$otherList = $this->listService->create(self::OWNER, 'Other list');
-		$this->participantService->addUser($otherList, self::USER);
+		$this->participantService->addUser($otherList, self::USER, self::OWNER);
 		$guest = $this->participantService->addGuest($otherList, 'Bob', 'bob@example.com');
 
 		Server::get(UserDeletedListener::class)->handle(new UserDeletedEvent($user));
 
-		$this->assertSame([], $this->listService->getByOwner(self::USER));
+		$this->assertSame([], $this->listService->getAccessible(self::USER));
 		$this->assertSame(
 			[$guest->getId()],
 			array_map(static fn ($participant) => $participant->getId(), $this->participantService->getParticipants($otherList)),

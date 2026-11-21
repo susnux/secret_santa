@@ -66,6 +66,8 @@
                 "type": "object",
                 "required": [
                     "id",
+                    "owner",
+                    "ownerDisplayName",
                     "name",
                     "senderName",
                     "mailSubject",
@@ -76,6 +78,14 @@
                 "properties": {
                     "id": {
                         "type": "string"
+                    },
+                    "owner": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "ownerDisplayName": {
+                        "type": "string",
+                        "nullable": true
                     },
                     "name": {
                         "type": "string"
@@ -169,6 +179,21 @@
                         "type": "boolean"
                     }
                 }
+            },
+            "Share": {
+                "type": "object",
+                "required": [
+                    "groupId",
+                    "displayName"
+                ],
+                "properties": {
+                    "groupId": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    }
+                }
             }
         }
     },
@@ -245,7 +270,7 @@
                         }
                     },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -399,7 +424,7 @@
                         }
                     },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -613,7 +638,7 @@
                         }
                     },
                     "404": {
-                        "description": "List, draw or participant not found or the list is not owned by the current user",
+                        "description": "List, draw or participant not found or the list is not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -744,7 +769,7 @@
                         }
                     },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -940,7 +965,7 @@
                         }
                     },
                     "404": {
-                        "description": "List or participant not found or the list is not owned by the current user",
+                        "description": "List or participant not found or the list is not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1115,7 +1140,7 @@
                         }
                     },
                     "404": {
-                        "description": "List or source list not found or not owned by the current user",
+                        "description": "List or source list not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1270,7 +1295,7 @@
                         }
                     },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1331,7 +1356,7 @@
         "/ocs/v2.php/apps/secret_santa/api/v1/lists": {
             "get": {
                 "operationId": "list-get-lists",
-                "summary": "Get all lists of the current user",
+                "summary": "Get the lists the current user owns or that are shared with their groups",
                 "tags": [
                     "list"
                 ],
@@ -1558,7 +1583,7 @@
         "/ocs/v2.php/apps/secret_santa/api/v1/lists/{listId}": {
             "get": {
                 "operationId": "list-get-list",
-                "summary": "Get a list of the current user",
+                "summary": "Get a list the current user can access",
                 "tags": [
                     "list"
                 ],
@@ -1624,7 +1649,7 @@
                         }
                     },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1814,7 +1839,7 @@
                         }
                     },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1874,6 +1899,7 @@
             "delete": {
                 "operationId": "list-delete-list",
                 "summary": "Delete a list including its participants",
+                "description": "Only the owner of the list can delete it.",
                 "tags": [
                     "list"
                 ],
@@ -1938,8 +1964,36 @@
                             }
                         }
                     },
+                    "403": {
+                        "description": "The current user is not the owner of the list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2067,7 +2121,7 @@
                         }
                     },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2192,7 +2246,7 @@
                         }
                     },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2322,7 +2376,7 @@
                         }
                     },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2506,7 +2560,7 @@
                         }
                     },
                     "404": {
-                        "description": "List not found or not owned by the current user",
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2695,7 +2749,7 @@
                         }
                     },
                     "404": {
-                        "description": "List or participant not found or the list is not owned by the current user",
+                        "description": "List or participant not found or the list is not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2858,7 +2912,503 @@
                         }
                     },
                     "404": {
-                        "description": "List or participant not found or the list is not owned by the current user",
+                        "description": "List or participant not found or the list is not accessible by the current user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ocs/v2.php/apps/secret_santa/api/v1/lists/{listId}/shares": {
+            "get": {
+                "operationId": "share-get-shares",
+                "summary": "Get the groups a list is shared with",
+                "tags": [
+                    "share"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "listId",
+                        "in": "path",
+                        "description": "The id of the list",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^\\d+$"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Shares returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Share"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "List not found or not accessible by the current user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "operationId": "share-create-share",
+                "summary": "Share a list with a group",
+                "description": "All members of the group can change the list, but only the owner can delete and share it. The sharing restrictions of the server apply, e.g. sharing only with the own groups.",
+                "tags": [
+                    "share"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "groupId"
+                                ],
+                                "properties": {
+                                    "groupId": {
+                                        "type": "string",
+                                        "description": "The id of the group"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "listId",
+                        "in": "path",
+                        "description": "The id of the list",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^\\d+$"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "List shared",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Share"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Unknown group, sharing with the group is not allowed or the list is already shared with it",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The current user is not the owner of the list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "List not found or not accessible by the current user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ocs/v2.php/apps/secret_santa/api/v1/lists/{listId}/shares/{groupId}": {
+            "delete": {
+                "operationId": "share-delete-share",
+                "summary": "Stop sharing a list with a group",
+                "tags": [
+                    "share"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "listId",
+                        "in": "path",
+                        "description": "The id of the list",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^\\d+$"
+                        }
+                    },
+                    {
+                        "name": "groupId",
+                        "in": "path",
+                        "description": "The id of the group",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^.+$"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Share removed, or the list was not shared with the group",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "nullable": true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The current user is not the owner of the list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "List not found or not accessible by the current user",
                         "content": {
                             "application/json": {
                                 "schema": {

@@ -52,7 +52,7 @@ final class DrawController extends BaseOCSController {
 	 *
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_OK, list<SecretSantaDraw>, array{}>
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 200: Draws returned, the latest first
 	 */
@@ -77,7 +77,7 @@ final class DrawController extends BaseOCSController {
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_CREATED, SecretSantaDraw, array{}>
 	 * @throws OCSBadRequestException A participant has no email address, too few participants, not at least two valid draws exist or the list is archived
-	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
 	 *
 	 * 201: Partners drawn
 	 */
@@ -104,7 +104,7 @@ final class DrawController extends BaseOCSController {
 	 * @param string $participantId The id of the participant
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaDraw, array{}>|DataResponse<Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
 	 * @throws OCSBadRequestException Not the latest draw, the draw is outdated, the participant did not take part in it or has no email address, or the list is archived
-	 * @throws OCSNotFoundException List, draw or participant not found or the list is not owned by the current user
+	 * @throws OCSNotFoundException List, draw or participant not found or the list is not accessible by the current user
 	 *
 	 * 200: Email sent
 	 * 503: The email could not be sent
