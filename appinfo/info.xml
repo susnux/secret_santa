@@ -24,7 +24,11 @@
 	<website>https://github.com/susnux/secret_santa</website>
 	<bugs>https://github.com/susnux/secret_santa/issues</bugs>
 	<repository type="git">https://github.com/susnux/secret_santa.git</repository>
-	<screenshot>https://raw.githubusercontent.com/susnux/secret_santa/main/img/screenshot.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/susnux/secret_santa/main/docs/screenshots/demo.webp</screenshot>
+	<screenshot>https://raw.githubusercontent.com/susnux/secret_santa/main/docs/screenshots/participants.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/susnux/secret_santa/main/docs/screenshots/exclusions.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/susnux/secret_santa/main/docs/screenshots/email.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/susnux/secret_santa/main/docs/screenshots/draw.png</screenshot>
 	<dependencies>
 		<php min-version="8.3" />
 		<nextcloud min-version="35" max-version="36"/>
