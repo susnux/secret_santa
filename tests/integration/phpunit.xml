@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	SPDX-FileCopyrightText: 2026 Ferdinand Thiessen <opensource@fthiessen.de>
+	SPDX-License-Identifier: CC0-1.0
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" bootstrap="bootstrap.php" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/12.5/phpunit.xsd" cacheDirectory="../.phpunit.cache">
+	<testsuite name="Secret Santa Integration Tests">
+		<directory suffix="Test.php">.</directory>
+	</testsuite>
+	<php>
+		<env name="NEXTCLOUD_URL" value="http://localhost:8080"/>
+		<env name="NEXTCLOUD_ADMIN_USER" value="admin"/>
+		<env name="NEXTCLOUD_ADMIN_PASSWORD" value="admin"/>
+	</php>
+</phpunit>

@@ -25,3 +25,22 @@ npm run dev
 
 - PHP: `composer run cs:check`, `composer run psalm`, `composer run test:unit`
 - Frontend: `npm run lint`, `npm run stylelint`, `npm test`
+- API: `composer run openapi` regenerates `openapi.json` after changing a controller or `lib/ResponseDefinitions.php`
+
+### Tests
+
+The unit tests (`tests/unit`) need a Nextcloud installation with the app enabled, the app has to be placed in an apps directory of that installation.
+Run them with `composer run test:unit`, set `NEXTCLOUD_CONFIG_DIR` to use another configuration than the default one of the server.
+
+The integration tests (`tests/integration`) send requests to a running instance with the app enabled.
+They create and delete their own users with the admin account, configured by environment variables:
+
+| Variable | Default |
+| --- | --- |
+| `NEXTCLOUD_URL` | `http://localhost:8080` |
+| `NEXTCLOUD_ADMIN_USER` | `admin` |
+| `NEXTCLOUD_ADMIN_PASSWORD` | `admin` |
+
+```sh
+NEXTCLOUD_URL=http://localhost:8089 composer run test:integration
+```

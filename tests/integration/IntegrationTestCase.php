@@ -1,0 +1,124 @@
+<?php
+
+declare(strict_types=1);
+
+/*!
+ * SPDX-FileCopyrightText: 2026 Ferdinand Thiessen <opensource@fthiessen.de>
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+namespace OCA\SecretSanta\Tests\Integration;
+
+use GuzzleHttp\Client;
+use GuzzleHttp\RequestOptions;
+use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\ResponseInterface;
+
+/**
+ * Base class for tests that send requests to a running Nextcloud instance with the app enabled.
+ *
+ * The instance is configured with the `NEXTCLOUD_URL`, `NEXTCLOUD_ADMIN_USER` and `NEXTCLOUD_ADMIN_PASSWORD`
+ * environment variables. Users created with `createUser()` are deleted after each test, which also deletes their lists.
+ */
+abstract class IntegrationTestCase extends TestCase {
+
+	private Client $client;
+	/** @var array<string, string> user id => password */
+	private array $users = [];
+
+	#[\Override]
+	protected function setUp(): void {
+		parent::setUp();
+		$this->client = new Client([
+			'base_uri' => rtrim((string)getenv('NEXTCLOUD_URL'), '/') . '/',
+			RequestOptions::HTTP_ERRORS => false,
+			RequestOptions::HEADERS => [
+				'Accept' => 'application/json',
+				'OCS-APIRequest' => 'true',
+			],
+		]);
+	}
+
+	#[\Override]
+	protected function tearDown(): void {
+		foreach (array_keys($this->users) as $userId) {
+			$response = $this->adminRequest('DELETE', 'ocs/v2.php/cloud/users/' . rawurlencode($userId));
+			$this->assertSame(200, $response->getStatusCode(), 'Failed to delete test user ' . $userId);
+		}
+		$this->users = [];
+		parent::tearDown();
+	}
+
+	/**
+	 * Create a user with a random id and password.
+	 *
+	 * @return string The user id
+	 */
+	protected function createUser(): string {
+		$userId = 'secret-santa-test-' . bin2hex(random_bytes(6));
+		$password = bin2hex(random_bytes(16)) . 'Aa1!';
+		$response = $this->adminRequest('POST', 'ocs/v2.php/cloud/users', [
+			RequestOptions::JSON => ['userid' => $userId, 'password' => $password],
+		]);
+		$this->assertSame(200, $response->getStatusCode(), 'Failed to create test user: ' . $response->getBody());
+
+		$this->users[$userId] = $password;
+		return $userId;
+	}
+
+	/**
+	 * Send a request to the OCS API of the app as the given user.
+	 *
+	 * @param string $path Path relative to the app's OCS root, e.g. `api/v1/lists`
+	 * @param array<string, mixed> $options Guzzle request options
+	 */
+	protected function ocsRequest(string $userId, string $method, string $path, array $options = []): ResponseInterface {
+		$this->assertArrayHasKey($userId, $this->users, 'Requests can only be sent as users created by the test');
+		return $this->client->request($method, 'ocs/v2.php/apps/secret_santa/' . ltrim($path, '/'), [
+			...$options,
+			RequestOptions::AUTH => [$userId, $this->users[$userId]],
+		]);
+	}
+
+	/**
+	 * Delete a user created by `createUser()` before the end of the test.
+	 */
+	protected function deleteUser(string $userId): void {
+		$response = $this->adminRequest('DELETE', 'ocs/v2.php/cloud/users/' . rawurlencode($userId));
+		$this->assertSame(200, $response->getStatusCode(), 'Failed to delete test user ' . $userId);
+		unset($this->users[$userId]);
+	}
+
+	/**
+	 * Set the email address of a user created by `createUser()`.
+	 */
+	protected function setEmail(string $userId, string $email): void {
+		$response = $this->adminRequest('PUT', 'ocs/v2.php/cloud/users/' . rawurlencode($userId), [
+			RequestOptions::JSON => ['key' => 'email', 'value' => $email],
+		]);
+		$this->assertSame(200, $response->getStatusCode(), 'Failed to set the email address: ' . $response->getBody());
+	}
+
+	/**
+	 * Assert the status code of an OCS response and return its data.
+	 */
+	protected function assertOcsResponse(int $expectedStatus, ResponseInterface $response): mixed {
+		$body = (string)$response->getBody();
+		$this->assertSame($expectedStatus, $response->getStatusCode(), 'Unexpected status code, response: ' . $body);
+
+		$json = json_decode($body, true, flags: JSON_THROW_ON_ERROR);
+		$this->assertIsArray($json);
+		$this->assertArrayHasKey('ocs', $json);
+		return $json['ocs']['data'];
+	}
+
+	/**
+	 * @param array<string, mixed> $options Guzzle request options
+	 */
+	private function adminRequest(string $method, string $path, array $options = []): ResponseInterface {
+		return $this->client->request($method, $path, [
+			...$options,
+			RequestOptions::AUTH => [(string)getenv('NEXTCLOUD_ADMIN_USER'), (string)getenv('NEXTCLOUD_ADMIN_PASSWORD')],
+		]);
+	}
+}
