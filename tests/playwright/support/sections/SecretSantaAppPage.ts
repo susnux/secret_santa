@@ -208,5 +208,7 @@ export class SecretSantaAppPage {
 	async draw(): Promise<void> {
 		await this.section('Draw').getByRole('button', { name: 'Draw partners and send emails' }).click()
 		await this.dialog('Draw the partners?').getByRole('button', { name: 'Draw and send emails' }).click()
+		// NcDialog is hidden at once but only closed after its transition, until then it can not be opened again
+		await this.page.locator('.dialog__modal').waitFor({ state: 'detached' })
 	}
 }
