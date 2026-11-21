@@ -30,4 +30,24 @@ final class PageController extends Controller {
 
 		return new TemplateResponse($this->appName, 'main');
 	}
+
+	/**
+	 * Page shown by the frontend when a list does not exist
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[FrontpageRoute(verb: 'GET', url: '/not-found')]
+	public function notFound(): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
+	 * Page of a list, the frontend loads the list and shows "not found" if it is not accessible
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[FrontpageRoute(verb: 'GET', url: '/{listId}', requirements: ['listId' => '\d+'])]
+	public function showList(): TemplateResponse {
+		return $this->index();
+	}
 }

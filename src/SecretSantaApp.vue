@@ -4,26 +4,17 @@
 -->
 
 <script setup lang="ts">
-import { mdiGiftOutline } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
-import NcAppNavigation from '@nextcloud/vue/components/NcAppNavigation'
 import NcContent from '@nextcloud/vue/components/NcContent'
-import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
-import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
+import AppNavigation from './views/AppNavigation.vue'
 </script>
 
 <template>
 	<NcContent appName="secret_santa">
-		<NcAppNavigation :aria-label="t('secret_santa', 'Secret Santa lists')" />
+		<AppNavigation />
 		<NcAppContent :pageHeading="t('secret_santa', 'Secret Santa')">
-			<NcEmptyContent
-				:name="t('secret_santa', 'No list selected')"
-				:description="t('secret_santa', 'Create a new list to start a gift exchange.')">
-				<template #icon>
-					<NcIconSvgWrapper :path="mdiGiftOutline" />
-				</template>
-			</NcEmptyContent>
+			<RouterView />
 		</NcAppContent>
 	</NcContent>
 </template>

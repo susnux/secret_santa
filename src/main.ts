@@ -5,6 +5,10 @@
 
 import { createApp } from 'vue'
 import SecretSantaApp from './SecretSantaApp.vue'
+import { router } from './router.ts'
+import { pinia } from './store/index.ts'
 
 createApp(SecretSantaApp)
+	.use(pinia)
+	.use(router)
 	.mount('#content')
