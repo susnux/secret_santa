@@ -7,9 +7,9 @@ import type { User } from '@nextcloud/e2e-test-server'
 
 import { runOcc } from '@nextcloud/e2e-test-server/docker'
 import { createRandomUser, login } from '@nextcloud/e2e-test-server/playwright'
+import { expect, test } from '../support/fixtures/secret-santa-app.ts'
 import { SecretSantaAppPage } from '../support/sections/SecretSantaAppPage.ts'
 import { retryWithBackoff } from '../support/utils/retry.ts'
-import { expect, test } from '../support/fixtures/secret-santa-app.ts'
 
 test.describe('Sharing', () => {
 	let member: User
