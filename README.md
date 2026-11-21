@@ -14,6 +14,8 @@ Organize a Secret Santa gift exchange ("Wichteln") in Nextcloud.
 - Exclude partners, e.g. couples, from drawing each other
 
 Emails are sent through the mail server configured in the Nextcloud administration settings.
+Every user who can use the app can send emails with their own text to the participants, including guests.
+Administrators can limit the app to some groups in the app management.
 
 ## Development
 
