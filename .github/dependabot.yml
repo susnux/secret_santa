@@ -8,7 +8,7 @@ updates:
       - '/'
       - '/vendor-bin/*/'
     schedule:
-      interval: weekly
+      interval: monthly
       day: saturday
       time: '03:00'
       timezone: Europe/Paris
@@ -22,7 +22,7 @@ updates:
     target-branch: 'main'
     directory: '/'
     schedule:
-      interval: weekly
+      interval: monthly
       day: saturday
       time: '03:00'
       timezone: Europe/Paris
@@ -36,7 +36,7 @@ updates:
     target-branch: 'main'
     directory: '/'
     schedule:
-      interval: weekly
+      interval: monthly
       day: saturday
       time: '03:00'
       timezone: Europe/Paris
