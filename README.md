@@ -27,6 +27,7 @@ npm run dev
 
 - PHP: `composer run cs:check`, `composer run psalm`, `composer run test:unit`
 - Frontend: `npm run lint`, `npm run stylelint`, `npm test`
+- End-to-end: `npm run playwright` starts a Nextcloud container with the app (Docker required, uses port 8089), run `npm run playwright:install` once before
 - API: `composer run openapi` regenerates `openapi.json` after changing a controller or `lib/ResponseDefinitions.php`
 
 ### Tests

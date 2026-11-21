@@ -15,5 +15,7 @@
 /node_modules/
 /js/
 /css/
+/blob-report/
+/playwright-report/
 /test-results/
 /nextcloud.log
