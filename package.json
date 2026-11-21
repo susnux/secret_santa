@@ -1,0 +1,54 @@
+{
+  "name": "secret_santa",
+  "version": "0.0.1",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "build": "NODE_ENV=production vite --mode production build",
+    "dev": "NODE_ENV=development vite --mode development build",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "stylelint": "stylelint src/**/*.vue src/**/*.scss src/**/*.css",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "watch": "NODE_ENV=development vite --mode development build --watch"
+  },
+  "allowScripts": {
+    "@parcel/watcher": true,
+    "esbuild": true
+  },
+  "browserslist": [
+    "extends @nextcloud/browserslist-config"
+  ],
+  "dependencies": {
+    "@mdi/js": "^7.4.47",
+    "@nextcloud/auth": "^2.6.0",
+    "@nextcloud/axios": "^2.6.0",
+    "@nextcloud/l10n": "^3.4.1",
+    "@nextcloud/logger": "^3.0.3",
+    "@nextcloud/router": "^3.2.0",
+    "@nextcloud/vue": "^9.14.1",
+    "vue": "^3.5.45"
+  },
+  "devDependencies": {
+    "@nextcloud/browserslist-config": "^3.1.2",
+    "@nextcloud/eslint-config": "^9.0.1",
+    "@nextcloud/stylelint-config": "^3.2.2",
+    "@nextcloud/typings": "^1.10.0",
+    "@nextcloud/vite-config": "^2.5.4",
+    "@vitejs/plugin-vue": "^6.0.11",
+    "@vue/test-utils": "^2.6.0",
+    "@vue/tsconfig": "^0.9.1",
+    "eslint": "^10.15.0",
+    "happy-dom": "^21.0.4",
+    "stylelint": "^17.16.0",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.7",
+    "vitest": "^5.1.0"
+  },
+  "engines": {
+    "node": "^24.0.0",
+    "npm": "^11.0.0"
+  }
+}

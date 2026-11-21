@@ -1,0 +1,23 @@
+/# SPDX-FileCopyrightText: 2026 Ferdinand Thiessen <opensource@fthiessen.de>
+/# SPDX-License-Identifier: AGPL-3.0-or-later
+
+/.claude
+/.git
+/.github
+/.gitignore
+/.l10nignore
+/.nextcloudignore
+/.php-cs-fixer.dist.php
+/AGENTS.md
+/CLAUDE.md
+/eslint.config.js
+/node_modules
+/psalm.xml
+/src
+/stylelint.config.cjs
+/tests
+/translationfiles
+/tsconfig.json
+/vendor-bin
+/vite.config.ts
+/vitest.config.ts
