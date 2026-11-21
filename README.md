@@ -7,6 +7,8 @@
 
 Organize a Secret Santa gift exchange ("Wichteln") in Nextcloud.
 
+![Creating a list and adding participants](docs/screenshots/demo.webp)
+
 - Create lists of participants, both Nextcloud users and guests by name and email
 - Write the email every participant receives
 - Draw the partners and notify every participant by email whom to give a gift
@@ -29,6 +31,7 @@ npm run dev
 - Frontend: `npm run lint`, `npm run stylelint`, `npm test`
 - End-to-end: `npm run playwright` starts a Nextcloud container with the app (Docker required, uses port 8089), run `npm run playwright:install` once before
 - API: `composer run openapi` regenerates `openapi.json` after changing a controller or `lib/ResponseDefinitions.php`
+- Screenshots: `npm run screenshots` regenerates the app store screenshots in `docs/screenshots` with the same container as the end-to-end tests, the animated demo needs `img2webp` from libwebp
 
 ### Tests
 
