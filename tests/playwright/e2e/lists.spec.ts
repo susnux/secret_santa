@@ -12,7 +12,8 @@ test.describe('Lists', () => {
 
 	test('shows the empty view without lists', async ({ secretSantaApp }) => {
 		await expect(secretSantaApp.emptyContent('No list selected')).toBeVisible()
-		await expect(secretSantaApp.navigation().getByRole('link')).toHaveCount(0)
+		await expect(secretSantaApp.navigation().getByRole('list', { name: 'Your lists' }).getByRole('link')).toHaveCount(0)
+		await expect(secretSantaApp.archivedListsNavigationItem()).toBeVisible()
 	})
 
 	test('creates, renames and deletes a list', async ({ secretSantaApp, page }) => {
