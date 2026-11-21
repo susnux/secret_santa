@@ -34,14 +34,14 @@ const draws = ref<IDraw[]>([])
 const loading = ref(true)
 const failed = ref(false)
 
-watch(() => props.listId, () => {
+watch(() => props.listId, async () => {
 	loading.value = true
-	load()
-}, { immediate: true })
-watch(() => store.loaded && !list.value, (missing) => {
-	if (missing) {
+	await store.ready
+	if (store.loaded && !list.value) {
 		router.replace({ name: 'not-found' })
+		return
 	}
+	await load()
 }, { immediate: true })
 
 /**

@@ -52,12 +52,14 @@ export const useListsStore = defineStore('secret_santa-lists', () => {
 		lists.value = lists.value.filter(({ id }) => id !== listId)
 	}
 
-	load()
+	/** Resolved when the lists were loaded for the first time, even if loading failed */
+	const ready = load()
 
 	return {
 		lists,
 		loaded,
 		failed,
+		ready,
 		load,
 		setList,
 		removeList,
