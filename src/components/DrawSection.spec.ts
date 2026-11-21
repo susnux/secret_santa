@@ -28,6 +28,7 @@ function createTestDraw(id: string, notNotified: string[] = []): IDraw {
 	return {
 		id,
 		createdAt: drawnAt,
+		outdated: false,
 		notifications: participants.map(({ id }) => ({ participantId: id, notifiedAt: notNotified.includes(id) ? null : drawnAt + 1 })),
 	}
 }
@@ -145,6 +146,16 @@ describe('DrawSection', () => {
 
 		expect(notifyParticipant).toHaveBeenCalledWith(list.id, '21', '2')
 		expect(wrapper.emitted('update:draws')).toEqual([[[updated, createTestDraw('20')]]])
+	})
+
+	it('asks to draw again if the latest draw is outdated', async () => {
+		const wrapper = await mountSection({ draws: [{ ...createTestDraw('21', ['2']), outdated: true }] })
+
+		expect(wrapper.text()).toContain('Participants of the latest draw were removed')
+		for (const row of wrapper.findAll('[data-participant]')) {
+			expect(row.findComponent(NcButton).props('disabled')).toBe(true)
+		}
+		expect(findDrawButton(wrapper).props('disabled')).toBe(false)
 	})
 
 	it('shows why an email could not be sent again', async () => {

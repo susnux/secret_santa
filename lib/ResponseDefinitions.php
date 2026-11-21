@@ -52,10 +52,13 @@ namespace OCA\SecretSanta;
  *
  * A draw of the partners of a list, `createdAt` is the time of the draw as Unix timestamp.
  * The drawn partners are never returned, they are only sent to the participants.
+ * A draw is `outdated` if participants of it were removed, so others have no partner anymore.
+ * The emails of an outdated draw can not be sent again, the partners need to be drawn again.
  *
  * @psalm-type SecretSantaDraw = array{
  *     id: string,
  *     createdAt: int,
+ *     outdated: bool,
  *     notifications: list<SecretSantaNotification>,
  * }
  *

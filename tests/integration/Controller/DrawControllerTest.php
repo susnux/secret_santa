@@ -89,7 +89,8 @@ final class DrawControllerTest extends IntegrationTestCase {
 
 		$draw = $this->draw();
 
-		$this->assertSame(['id', 'createdAt', 'notifications'], array_keys($draw));
+		$this->assertSame(['id', 'createdAt', 'outdated', 'notifications'], array_keys($draw));
+		$this->assertFalse($draw['outdated']);
 		$this->assertMatchesRegularExpression('/^\d+$/', $draw['id']);
 		$this->assertEqualsWithDelta(time(), $draw['createdAt'], 300);
 		$participantIds = array_column($draw['notifications'], 'participantId');
@@ -105,7 +106,7 @@ final class DrawControllerTest extends IntegrationTestCase {
 	}
 
 	public function testDrawSendsThePartners(): void {
-		$this->addGuests(['carol', 'dave', 'erin', 'frank']);
+		$this->addGuests(['carol', 'dave', 'erin', 'frank', 'grace', 'heidi']);
 		$this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'PUT', 'api/v1/lists/' . $this->listId . '/participants/' . $this->participants['carol'] . '/exclusions', [
 			RequestOptions::JSON => ['receiverIds' => [$this->participants['dave']]],
 		]));
@@ -116,7 +117,7 @@ final class DrawControllerTest extends IntegrationTestCase {
 		$this->assertNotContains(null, array_column($draw['notifications'], 'notifiedAt'));
 		$receivers = array_values($first);
 		sort($receivers);
-		$this->assertSame(['carol', 'dave', 'erin', 'frank'], $receivers);
+		$this->assertSame(['carol', 'dave', 'erin', 'frank', 'grace', 'heidi'], $receivers);
 		foreach ($first as $giver => $receiver) {
 			$this->assertNotSame($giver, $receiver);
 			$this->assertNotSame($giver, $first[$receiver], 'No two participants draw each other');
@@ -164,8 +165,30 @@ final class DrawControllerTest extends IntegrationTestCase {
 		$this->assertSame($partners[0], $partners[1], 'The same partner is sent again');
 	}
 
-	public function testNotifyOnlyForTheLatestDraw(): void {
+	public function testDrawIsRefusedIfItIsTheOnlyValidDraw(): void {
 		$this->addGuests(['carol', 'dave', 'erin']);
+		$draw = $this->draw();
+
+		$this->assertOcsResponse(400, $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $this->listId . '/draws'));
+		$this->assertSame([$draw], $this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'GET', 'api/v1/lists/' . $this->listId . '/draws')));
+	}
+
+	public function testRemovingAParticipantMarksTheDrawOutdated(): void {
+		$this->addGuests(['carol', 'dave', 'erin', 'frank']);
+		$draw = $this->draw();
+
+		$this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'DELETE', 'api/v1/lists/' . $this->listId . '/participants/' . $this->participants['carol']));
+
+		$draws = $this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'GET', 'api/v1/lists/' . $this->listId . '/draws'));
+		$this->assertTrue($draws[0]['outdated']);
+		$this->assertCount(3, $draws[0]['notifications'], 'Only carol is removed from the notifications, not who drew carol');
+		foreach (['dave', 'erin', 'frank'] as $name) {
+			$this->assertOcsResponse(400, $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $this->listId . '/draws/' . $draw['id'] . '/participants/' . $this->participants[$name] . '/notify'));
+		}
+	}
+
+	public function testNotifyOnlyForTheLatestDraw(): void {
+		$this->addGuests(['carol', 'dave', 'erin', 'frank', 'grace']);
 		$first = $this->draw();
 		$second = $this->draw();
 

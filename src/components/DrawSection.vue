@@ -143,6 +143,10 @@ function getName(participantId: string): string {
 				: t('secret_santa', 'All {count} participants get an email with their partner.', { count: participants.length })" />
 
 		<template v-if="latestDraw">
+			<NcNoteCard
+				v-if="latestDraw.outdated"
+				type="warning"
+				:text="t('secret_santa', 'Participants of the latest draw were removed, so others have no partner anymore. Draw the partners again.')" />
 			<h4 :class="$style.drawSection__heading">
 				{{ t('secret_santa', 'Latest draw') }}
 				<NcDateTime :class="$style.drawSection__date" :timestamp="latestDraw.createdAt * 1000" />
@@ -166,7 +170,7 @@ function getName(participantId: string): string {
 					</span>
 					<NcButton
 						:aria-label="t('secret_santa', 'Send the email to {name} again', { name: getName(notification.participantId) }, PLAIN_TEXT)"
-						:disabled="notifying !== undefined"
+						:disabled="notifying !== undefined || latestDraw.outdated"
 						:variant="notification.notifiedAt ? 'tertiary' : 'secondary'"
 						@click="notify(notification.participantId)">
 						<template #icon>

@@ -138,8 +138,9 @@ final class DrawManagerTest extends TestCase {
 		$this->assertNotSame('bob', $partners['alice']);
 		$this->assertNotSame('alice', $partners['bob']);
 
-		$serialized = $this->createManager()->serialize($draw);
-		$this->assertSame(['id', 'createdAt', 'notifications'], array_keys($serialized));
+		$serialized = $this->createManager()->serialize($this->list, $draw);
+		$this->assertSame(['id', 'createdAt', 'outdated', 'notifications'], array_keys($serialized));
+		$this->assertFalse($serialized['outdated']);
 		$this->assertSame($draw->getId(), $serialized['id']);
 		$this->assertEqualsWithDelta(time(), $serialized['createdAt'], 60);
 		$participantIds = array_map(static fn (Participant $participant): string => $participant->getId(), array_values($this->participants));
@@ -152,22 +153,34 @@ final class DrawManagerTest extends TestCase {
 	}
 
 	public function testDrawAvoidsPartnersOfThePreviousDraw(): void {
-		$this->addGuests(['alice', 'bob', 'carol']);
+		$this->addGuests(['alice', 'bob', 'carol', 'dave', 'erin']);
 		$manager = $this->createManager();
 
 		$manager->draw($this->list);
 		$first = $this->takeSentPartners();
 		$manager->draw($this->list);
 		$second = $this->takeSentPartners();
-		$manager->draw($this->list);
-		$third = $this->takeSentPartners();
 
-		// Three participants can only draw a cycle, which has to change its direction every time
 		foreach ($first as $giver => $receiver) {
-			$this->assertSame($giver, $second[$receiver]);
+			$this->assertNotSame($receiver, $second[$giver]);
 		}
-		$this->assertSame($first, $third);
-		$this->assertCount(3, $manager->getDraws($this->list));
+		$this->assertCount(2, $manager->getDraws($this->list));
+	}
+
+	public function testDrawIsRefusedIfItIsTheOnlyValidDraw(): void {
+		$this->addGuests(['alice', 'bob', 'carol']);
+		$manager = $this->createManager();
+		$manager->draw($this->list);
+		$this->takeSentPartners();
+
+		try {
+			$manager->draw($this->list);
+			$this->fail('Expected an exception');
+		} catch (InvalidInputException $error) {
+			$this->assertSame('Only one valid draw exists.', $error->getMessage());
+		}
+		$this->assertSame([], $this->messages);
+		$this->assertCount(1, $manager->getDraws($this->list));
 	}
 
 	public function testParticipantWithoutEmail(): void {
@@ -216,7 +229,7 @@ final class DrawManagerTest extends TestCase {
 
 		$this->assertCount(3, $this->messages);
 		$notifiedAt = [];
-		foreach ($manager->serialize($draw)['notifications'] as $notification) {
+		foreach ($manager->serialize($this->list, $draw)['notifications'] as $notification) {
 			$notifiedAt[$notification['participantId']] = $notification['notifiedAt'];
 		}
 		$this->assertNull($notifiedAt[$this->participants['bob']->getId()]);
@@ -235,7 +248,7 @@ final class DrawManagerTest extends TestCase {
 		$manager->notify($this->list, $draw, $this->participants['bob']);
 
 		$this->assertSame(['bob' => $partnerOfBob], $this->takeSentPartners());
-		$this->assertSame([self::TIME, self::TIME, self::TIME], array_column($manager->serialize($draw)['notifications'], 'notifiedAt'));
+		$this->assertSame([self::TIME, self::TIME, self::TIME], array_column($manager->serialize($this->list, $draw)['notifications'], 'notifiedAt'));
 	}
 
 	public function testNotifyFailure(): void {
@@ -249,7 +262,7 @@ final class DrawManagerTest extends TestCase {
 	}
 
 	public function testNotifyOnlyForTheLatestDraw(): void {
-		$this->addGuests(['alice', 'bob', 'carol']);
+		$this->addGuests(['alice', 'bob', 'carol', 'dave', 'erin']);
 		$manager = $this->createManager();
 		$first = $manager->draw($this->list);
 		$manager->draw($this->list);
@@ -270,7 +283,7 @@ final class DrawManagerTest extends TestCase {
 		$manager->notify($this->list, $draw, $this->participants['dave']);
 	}
 
-	public function testDeletingParticipantsAndListsDeletesTheirDraws(): void {
+	public function testDeletingAParticipantMarksTheDrawOutdated(): void {
 		$this->addGuests(['alice', 'bob', 'carol', 'dave']);
 		$manager = $this->createManager();
 		$draw = $manager->draw($this->list);
@@ -278,13 +291,30 @@ final class DrawManagerTest extends TestCase {
 		$this->participantService->delete($this->participants['alice']);
 
 		$pairings = Server::get(PairingMapper::class)->getPairings($draw);
-		$this->assertLessThanOrEqual(2, count($pairings), 'The pairings of alice as giver and receiver are deleted');
-		foreach ($pairings as $pairing) {
-			$this->assertNotSame($this->participants['alice']->getId(), $pairing->giverId);
-			$this->assertNotSame($this->participants['alice']->getId(), $pairing->receiverId);
+		$this->assertCount(3, $pairings, 'Only the pairing of alice as giver is deleted, deleting the other one would reveal who drew alice');
+		$this->assertNotContains($this->participants['alice']->getId(), array_map(static fn ($pairing) => $pairing->giverId, $pairings));
+		$serialized = $manager->serialize($this->list, $draw);
+		$this->assertTrue($serialized['outdated']);
+		$this->assertCount(3, $serialized['notifications']);
+
+		// Every participant gets the same error, so it does not reveal who drew alice
+		foreach (['bob', 'carol', 'dave'] as $name) {
+			try {
+				$manager->notify($this->list, $draw, $this->participants[$name]);
+				$this->fail('Expected an exception');
+			} catch (\InvalidArgumentException $error) {
+				$this->assertSame('Participants of the draw were removed, the partners need to be drawn again.', $error->getMessage());
+			}
 		}
+	}
+
+	public function testDeletingAListDeletesItsDraws(): void {
+		$this->addGuests(['alice', 'bob', 'carol']);
+		$manager = $this->createManager();
+		$draw = $manager->draw($this->list);
 
 		$this->listService->delete($this->list);
+
 		$this->assertSame([], $manager->getDraws($this->list));
 		$this->assertSame([], Server::get(PairingMapper::class)->getPairings($draw));
 	}

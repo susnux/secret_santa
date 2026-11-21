@@ -127,12 +127,12 @@ final class ParticipantService {
 	}
 
 	/**
-	 * Remove a participant from their list including their exclusions and pairings.
+	 * Remove a participant from their list including their exclusions and their pairings as giver.
 	 */
 	public function delete(Participant $participant): void {
 		$this->atomic(function () use ($participant): void {
 			$this->exclusionMapper->deleteByParticipant($participant);
-			$this->pairingMapper->deleteByParticipant($participant);
+			$this->pairingMapper->deleteByGiver($participant);
 			$this->participantMapper->delete($participant);
 		}, $this->db);
 	}

@@ -75,15 +75,14 @@ final class PairingMapper {
 	}
 
 	/**
-	 * Delete the pairings of a participant as giver and as receiver
+	 * Delete the pairings of a participant as giver.
+	 *
+	 * The pairings with the participant as receiver are kept, deleting them would reveal who drew the participant.
 	 */
-	public function deleteByParticipant(Participant $participant): void {
+	public function deleteByGiver(Participant $participant): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->delete(self::TABLE_NAME)
-			->where($qb->expr()->orX(
-				$qb->expr()->eq('giver_id', $qb->createNamedParameter($participant->getId())),
-				$qb->expr()->eq('receiver_id', $qb->createNamedParameter($participant->getId())),
-			))
+			->where($qb->expr()->eq('giver_id', $qb->createNamedParameter($participant->getId())))
 			->executeStatement();
 	}
 

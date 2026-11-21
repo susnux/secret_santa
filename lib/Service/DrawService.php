@@ -21,6 +21,8 @@ use Random\Randomizer;
  *
  * Nobody draws themselves, a partner they must not draw, or their partner of the previous draw,
  * and no two participants draw each other.
+ * A draw is only made if another valid draw exists, otherwise the partners could be deduced from these rules,
+ * e.g. three participants could deduce the previous draw from the current one.
  */
 final class DrawService {
 
@@ -44,7 +46,7 @@ final class DrawService {
 	 * @param list<Exclusion> $exclusions Partners participants must not draw
 	 * @param list<Pairing> $previousPairings The pairings of the previous draw, which must not be repeated
 	 * @return list<Pairing> One pairing for every participant
-	 * @throws InvalidInputException If there are too few participants or no valid draw exists
+	 * @throws InvalidInputException If there are too few participants or not at least two valid draws exist
 	 * @throws InvalidArgumentException If a participant is listed twice
 	 */
 	public function draw(array $participantIds, array $exclusions, array $previousPairings): array {
@@ -87,11 +89,46 @@ final class DrawService {
 			);
 		}
 
+		if (!$this->hasOtherDraw($candidates, $receiverOf)) {
+			throw new InvalidInputException(
+				'Only one valid draw exists.',
+				$this->l10n->t('Only one draw is possible with these participants, exclusions and the previous draw, so everybody could find out who drew whom. Add more participants or remove exclusions.'),
+			);
+		}
+
 		$pairings = [];
 		foreach ($participantIds as $giver => $giverId) {
 			$pairings[] = new Pairing($giverId, $participantIds[$receiverOf[$giver]]);
 		}
 		return $pairings;
+	}
+
+	/**
+	 * Check if another valid draw exists, which gives at least one giver a different receiver.
+	 *
+	 * Gives up after the maximum number of steps, treating the draw as the only one.
+	 *
+	 * @param array<int, list<int>> $candidates
+	 * @param array<int, int> $receiverOf giver => receiver of the found draw
+	 */
+	private function hasOtherDraw(array $candidates, array $receiverOf): bool {
+		$steps = 0;
+		foreach (array_keys($candidates) as $giver) {
+			$others = $candidates;
+			$others[$giver] = array_values(array_filter(
+				$candidates[$giver],
+				static fn (int $receiver): bool => $receiver !== $receiverOf[$giver],
+			));
+			$otherReceiverOf = [];
+			$otherGiverOf = [];
+			if ($this->hasPerfectMatching($others) && $this->search($others, $otherReceiverOf, $otherGiverOf, $steps)) {
+				return true;
+			}
+			if ($steps > self::MAX_STEPS) {
+				return false;
+			}
+		}
+		return false;
 	}
 
 	/**

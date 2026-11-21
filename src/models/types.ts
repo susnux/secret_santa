@@ -42,6 +42,8 @@ export interface IDraw {
 	id: string
 	/** Unix timestamp of the draw */
 	createdAt: number
+	/** Participants of the draw were removed, so the partners need to be drawn again */
+	outdated: boolean
 	notifications: INotification[]
 }
 

@@ -97,13 +97,57 @@ final class DrawServiceTest extends TestCase {
 		}
 	}
 
-	public function testThreeParticipantsDrawTheOtherDirectionThanBefore(): void {
-		[$alice, $bob, $carol] = $participantIds = self::participants(3);
-		$previous = [new Pairing($alice, $bob), new Pairing($bob, $carol), new Pairing($carol, $alice)];
+	public function testThreeParticipantsCanDrawEitherDirection(): void {
+		$participantIds = self::participants(3);
+		$service = $this->createService();
 
-		$pairings = $this->createService()->draw($participantIds, [], $previous);
+		$draws = [];
+		for ($i = 0; $i < 50; $i++) {
+			$draws[json_encode(self::toMap($service->draw($participantIds, [], [])))] = true;
+		}
 
-		$this->assertEquals([new Pairing($alice, $carol), new Pairing($bob, $alice), new Pairing($carol, $bob)], $pairings);
+		$this->assertCount(2, $draws, 'Both directions of the cycle are drawn');
+	}
+
+	public static function dataOnlyOneValidDraw(): array {
+		// Participants are referenced by their position
+		return [
+			'three participants after a draw' => [3, [], [[0, 1], [1, 2], [2, 0]]],
+			'four participants after a draw' => [4, [], [[0, 1], [1, 2], [2, 3], [3, 0]]],
+			'exclusions leaving one cycle' => [4, [[0, 2], [0, 3], [1, 0], [1, 3], [2, 0], [2, 1], [3, 1], [3, 2]], []],
+		];
+	}
+
+	/**
+	 * A draw is refused if it is the only valid one, as everybody could deduce it from the rules
+	 *
+	 * @param list<array{int, int}> $exclusions
+	 * @param list<array{int, int}> $previousPairings
+	 */
+	#[DataProvider('dataOnlyOneValidDraw')]
+	public function testOnlyOneValidDraw(int $count, array $exclusions, array $previousPairings): void {
+		$participantIds = self::participants($count);
+
+		try {
+			$this->createService()->draw(
+				$participantIds,
+				array_map(static fn (array $pair): Exclusion => new Exclusion($participantIds[$pair[0]], $participantIds[$pair[1]]), $exclusions),
+				array_map(static fn (array $pair): Pairing => new Pairing($participantIds[$pair[0]], $participantIds[$pair[1]]), $previousPairings),
+			);
+			$this->fail('Expected an exception');
+		} catch (InvalidInputException $error) {
+			$this->assertSame('Only one valid draw exists.', $error->getMessage());
+			$this->assertSame('translated: Only one draw is possible with these participants, exclusions and the previous draw, so everybody could find out who drew whom. Add more participants or remove exclusions.', $error->getHint());
+		}
+	}
+
+	public function testFiveParticipantsCanDrawAgain(): void {
+		$participantIds = self::participants(5);
+		$previous = array_map(static fn (int $index): Pairing => new Pairing($participantIds[$index], $participantIds[($index + 1) % 5]), range(0, 4));
+
+		for ($seed = 0; $seed < 20; $seed++) {
+			$this->assertValidDraw($participantIds, $this->createService($seed)->draw($participantIds, [], $previous), [], $previous);
+		}
 	}
 
 	public function testUnknownParticipantsInExclusionsAndPreviousPairingsAreIgnored(): void {

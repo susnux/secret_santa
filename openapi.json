@@ -25,6 +25,7 @@
                 "required": [
                     "id",
                     "createdAt",
+                    "outdated",
                     "notifications"
                 ],
                 "properties": {
@@ -34,6 +35,9 @@
                     "createdAt": {
                         "type": "integer",
                         "format": "int64"
+                    },
+                    "outdated": {
+                        "type": "boolean"
                     },
                     "notifications": {
                         "type": "array",
@@ -357,7 +361,7 @@
                         }
                     },
                     "400": {
-                        "description": "A participant has no email address, too few participants or no valid draw exists",
+                        "description": "A participant has no email address, too few participants or not at least two valid draws exist",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -447,7 +451,7 @@
             "post": {
                 "operationId": "draw-notify-participant",
                 "summary": "Send the email with their partner to a participant again",
-                "description": "Only possible for the latest draw of the list.",
+                "description": "Only possible for the latest draw of the list, if it is not outdated.",
                 "tags": [
                     "draw"
                 ],
@@ -571,7 +575,7 @@
                         }
                     },
                     "400": {
-                        "description": "Not the latest draw, the participant did not take part in it or has no email address",
+                        "description": "Not the latest draw, the draw is outdated, the participant did not take part in it or has no email address",
                         "content": {
                             "application/json": {
                                 "schema": {

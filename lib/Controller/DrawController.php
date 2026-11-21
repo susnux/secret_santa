@@ -59,8 +59,11 @@ final class DrawController extends BaseOCSController {
 	#[NoAdminRequired]
 	#[ApiRoute(verb: 'GET', url: '/api/v1/lists/{listId}/draws', requirements: ['listId' => '\d+'])]
 	public function getDraws(string $listId): DataResponse {
-		$draws = $this->drawManager->getDraws($this->findList($listId));
-		return new DataResponse(array_map($this->drawManager->serialize(...), $draws));
+		$list = $this->findList($listId);
+		return new DataResponse(array_map(
+			fn (Draw $draw): array => $this->drawManager->serialize($list, $draw),
+			$this->drawManager->getDraws($list),
+		));
 	}
 
 	/**
@@ -73,7 +76,7 @@ final class DrawController extends BaseOCSController {
 	 *
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_CREATED, SecretSantaDraw, array{}>
-	 * @throws OCSBadRequestException A participant has no email address, too few participants or no valid draw exists
+	 * @throws OCSBadRequestException A participant has no email address, too few participants or not at least two valid draws exist
 	 * @throws OCSNotFoundException List not found or not owned by the current user
 	 *
 	 * 201: Partners drawn
@@ -82,24 +85,25 @@ final class DrawController extends BaseOCSController {
 	#[UserRateLimit(limit: 5, period: 3600)]
 	#[ApiRoute(verb: 'POST', url: '/api/v1/lists/{listId}/draws', requirements: ['listId' => '\d+'])]
 	public function createDraw(string $listId): DataResponse {
+		$list = $this->findList($listId);
 		try {
-			$draw = $this->drawManager->draw($this->findList($listId));
+			$draw = $this->drawManager->draw($list);
 		} catch (InvalidInputException $error) {
 			throw new OCSBadRequestException($error->getHint());
 		}
-		return new DataResponse($this->drawManager->serialize($draw), Http::STATUS_CREATED);
+		return new DataResponse($this->drawManager->serialize($list, $draw), Http::STATUS_CREATED);
 	}
 
 	/**
 	 * Send the email with their partner to a participant again
 	 *
-	 * Only possible for the latest draw of the list.
+	 * Only possible for the latest draw of the list, if it is not outdated.
 	 *
 	 * @param string $listId The id of the list
 	 * @param string $drawId The id of the draw
 	 * @param string $participantId The id of the participant
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaDraw, array{}>|DataResponse<Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
-	 * @throws OCSBadRequestException Not the latest draw, the participant did not take part in it or has no email address
+	 * @throws OCSBadRequestException Not the latest draw, the draw is outdated, the participant did not take part in it or has no email address
 	 * @throws OCSNotFoundException List, draw or participant not found or the list is not owned by the current user
 	 *
 	 * 200: Email sent
@@ -121,7 +125,7 @@ final class DrawController extends BaseOCSController {
 		} catch (RuntimeException) {
 			return new DataResponse(['message' => $this->l10n->t('The email could not be sent.')], Http::STATUS_SERVICE_UNAVAILABLE);
 		}
-		return new DataResponse($this->drawManager->serialize($draw));
+		return new DataResponse($this->drawManager->serialize($list, $draw));
 	}
 
 	/**

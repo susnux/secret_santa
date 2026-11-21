@@ -111,7 +111,7 @@ final class DrawManager {
 	/**
 	 * Send the email with their partner to a participant of the latest draw again.
 	 *
-	 * @throws InvalidArgumentException If the draw is not the latest draw of the list or the participant did not take part in it
+	 * @throws InvalidArgumentException If the draw is not the latest draw of the list, it is outdated or the participant did not take part in it
 	 * @throws InvalidInputException If the participant or their partner has no email address
 	 * @throws RuntimeException If the email could not be sent
 	 */
@@ -120,11 +120,17 @@ final class DrawManager {
 			throw new InvalidArgumentException('Only the emails of the latest draw can be sent again.');
 		}
 
-		$pairing = $this->findPairing($draw, $giver);
+		$pairings = $this->pairingMapper->getPairings($draw);
+		// The same error for all participants, so it does not reveal whose partner was removed
+		$outdated = new InvalidArgumentException('Participants of the draw were removed, the partners need to be drawn again.');
+		if ($this->isOutdated($list, $pairings)) {
+			throw $outdated;
+		}
+		$pairing = $this->findPairing($pairings, $giver);
 		try {
 			$receiver = $this->participantService->get($list, $pairing->receiverId);
-		} catch (DoesNotExistException $error) {
-			throw new InvalidArgumentException('The partner of the participant was removed.', previous: $error);
+		} catch (DoesNotExistException) {
+			throw $outdated;
 		}
 		$this->notificationService->send($list, $this->participantService->getRecipient($giver), $this->participantService->getRecipient($receiver));
 		$this->pairingMapper->setNotified($draw, $giver->getId(), $this->timeFactory->getTime());
@@ -133,22 +139,40 @@ final class DrawManager {
 	/**
 	 * @return SecretSantaDraw
 	 */
-	public function serialize(Draw $draw): array {
+	public function serialize(SecretSantaList $list, Draw $draw): array {
+		$pairings = $this->pairingMapper->getPairings($draw);
 		return [
 			'id' => $draw->getId(),
 			'createdAt' => $draw->getCreatedAt()?->getTimestamp() ?? 0,
+			'outdated' => $this->isOutdated($list, $pairings),
 			'notifications' => array_map(static fn (Pairing $pairing): array => [
 				'participantId' => $pairing->giverId,
 				'notifiedAt' => $pairing->notifiedAt,
-			], $this->pairingMapper->getPairings($draw)),
+			], $pairings),
 		];
 	}
 
 	/**
+	 * Check if the partner of a participant of the draw was removed, so the participant has no partner anymore.
+	 *
+	 * @param list<Pairing> $pairings The pairings of the draw
+	 */
+	private function isOutdated(SecretSantaList $list, array $pairings): bool {
+		$participantIds = array_map(static fn (Participant $participant): string => $participant->getId(), $this->participantService->getParticipants($list));
+		foreach ($pairings as $pairing) {
+			if (!in_array($pairing->receiverId, $participantIds, true)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @param list<Pairing> $pairings The pairings of the draw
 	 * @throws InvalidArgumentException If the participant did not take part in the draw
 	 */
-	private function findPairing(Draw $draw, Participant $giver): Pairing {
-		foreach ($this->pairingMapper->getPairings($draw) as $pairing) {
+	private function findPairing(array $pairings, Participant $giver): Pairing {
+		foreach ($pairings as $pairing) {
 			if ($pairing->giverId === $giver->getId()) {
 				return $pairing;
 			}
