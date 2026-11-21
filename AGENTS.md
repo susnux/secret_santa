@@ -29,7 +29,7 @@ This file provides instructions for AI coding agents (Claude Code, GitHub Copilo
 
 ### What this agent must never do
 
-- Fully automate the resolution of issues labeled [`good first issue`](https://github.com/susnux/nextcloud-secret-santa/issues?q=label%3A%22good+first+issue%22) or similar beginner-friendly labels.
+- Fully automate the resolution of issues labeled [`good first issue`](https://github.com/susnux/secret_santa/issues?q=label%3A%22good+first+issue%22) or similar beginner-friendly labels.
 - Submit code that has not been reviewed and cleaned up by the contributor. Dead code, redundant logic, excessive comments, malformed or garbled characters (e.g. `�` replacement characters), and unrelated changes must be removed before submission.
 
 ---
@@ -111,6 +111,6 @@ See [HowToApplyALicense.md](https://github.com/nextcloud/server/blob/master/cont
 
 ### Security
 
-- Report potential vulnerabilities privately through [GitHub private vulnerability reporting](https://github.com/susnux/nextcloud-secret-santa/security/advisories/new), never as public GitHub issues.
+- Report potential vulnerabilities privately through [GitHub private vulnerability reporting](https://github.com/susnux/secret_santa/security/advisories/new), never as public GitHub issues.
 - AI-generated security reports must be independently verified by the human contributor before submission.
 - Manually verify all access control logic, authentication patterns, and dependency names - AI tools are known to hallucinate package names and reproduce vulnerable patterns.
