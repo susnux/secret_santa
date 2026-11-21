@@ -10,7 +10,9 @@ declare(strict_types=1);
 namespace OCA\SecretSanta\Service;
 
 use InvalidArgumentException;
+use OCA\SecretSanta\Db\DrawMapper;
 use OCA\SecretSanta\Db\ExclusionMapper;
+use OCA\SecretSanta\Db\PairingMapper;
 use OCA\SecretSanta\Db\ParticipantMapper;
 use OCA\SecretSanta\Db\SecretSantaList;
 use OCA\SecretSanta\Db\SecretSantaListMapper;
@@ -39,6 +41,8 @@ final class ListService {
 		private SecretSantaListMapper $listMapper,
 		private ParticipantMapper $participantMapper,
 		private ExclusionMapper $exclusionMapper,
+		private DrawMapper $drawMapper,
+		private PairingMapper $pairingMapper,
 	) {
 	}
 
@@ -85,7 +89,7 @@ final class ListService {
 	 * Change the details of a list, null values are left unchanged.
 	 *
 	 * @param ?string $senderName The display name of the sender, an empty string to use the display name of the owner
-	 * @throws InvalidInputException If the name, subject or body is empty
+	 * @throws InvalidInputException If the name, subject or body is empty or the subject contains the partner
 	 * @throws InvalidArgumentException If a value is too long
 	 */
 	public function update(
@@ -108,6 +112,12 @@ final class ListService {
 			if ($mailSubject === '') {
 				throw new InvalidInputException('The subject must not be empty.', $this->l10n->t('The subject of the email must not be empty.'));
 			}
+			if (str_contains($mailSubject, NotificationService::PLACEHOLDER_PARTNER)) {
+				throw new InvalidInputException(
+					'The subject must not contain the partner.',
+					$this->l10n->t('The partner can only be mentioned in the text of the email, as mail servers often log the subjects of emails.'),
+				);
+			}
 			$this->checkLength($mailSubject, self::MAX_LENGTH, 'subject');
 			$list->setMailSubject($mailSubject);
 		}
@@ -122,10 +132,12 @@ final class ListService {
 	}
 
 	/**
-	 * Delete a list including its participants and their exclusions.
+	 * Delete a list including its participants, exclusions and draws.
 	 */
 	public function delete(SecretSantaList $list): void {
 		$this->atomic(function () use ($list): void {
+			$this->pairingMapper->deleteByList($list);
+			$this->drawMapper->deleteByList($list);
 			$this->exclusionMapper->deleteByList($list);
 			$this->participantMapper->deleteByList($list);
 			$this->listMapper->delete($list);

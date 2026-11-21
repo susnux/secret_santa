@@ -11,6 +11,7 @@ namespace OCA\SecretSanta\Service;
 
 use InvalidArgumentException;
 use OCA\SecretSanta\Db\ExclusionMapper;
+use OCA\SecretSanta\Db\PairingMapper;
 use OCA\SecretSanta\Db\Participant;
 use OCA\SecretSanta\Db\ParticipantMapper;
 use OCA\SecretSanta\Db\SecretSantaList;
@@ -47,6 +48,7 @@ final class ParticipantService {
 		private IEmailValidator $emailValidator,
 		private ParticipantMapper $participantMapper,
 		private ExclusionMapper $exclusionMapper,
+		private PairingMapper $pairingMapper,
 	) {
 	}
 
@@ -125,11 +127,12 @@ final class ParticipantService {
 	}
 
 	/**
-	 * Remove a participant from their list including their exclusions.
+	 * Remove a participant from their list including their exclusions and pairings.
 	 */
 	public function delete(Participant $participant): void {
 		$this->atomic(function () use ($participant): void {
 			$this->exclusionMapper->deleteByParticipant($participant);
+			$this->pairingMapper->deleteByParticipant($participant);
 			$this->participantMapper->delete($participant);
 		}, $this->db);
 	}
@@ -141,6 +144,29 @@ final class ParticipantService {
 		foreach ($this->participantMapper->getParticipantsByUser($userId) as $participant) {
 			$this->delete($participant);
 		}
+	}
+
+	/**
+	 * Get the name and email address of a participant.
+	 *
+	 * @throws InvalidInputException If the participant has no email address
+	 */
+	public function getRecipient(Participant $participant): Recipient {
+		$userId = $participant->getUserId();
+		if ($userId === null) {
+			return new Recipient($participant->getDisplayName() ?? '', $participant->getEmail() ?? '');
+		}
+
+		$user = $this->userManager->get($userId);
+		$displayName = $user?->getDisplayName() ?? $userId;
+		$email = $user?->getEMailAddress() ?? '';
+		if ($email === '') {
+			throw new InvalidInputException(
+				'Participant without email address.',
+				$this->l10n->t('%s has no email address and can not be notified.', [$displayName]),
+			);
+		}
+		return new Recipient($displayName, $email);
 	}
 
 	/**

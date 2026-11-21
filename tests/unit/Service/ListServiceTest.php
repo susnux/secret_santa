@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace OCA\SecretSanta\Tests\Unit\Service;
 
+use OCA\SecretSanta\Db\DrawMapper;
 use OCA\SecretSanta\Db\ExclusionMapper;
+use OCA\SecretSanta\Db\PairingMapper;
 use OCA\SecretSanta\Db\ParticipantMapper;
 use OCA\SecretSanta\Db\SecretSantaListMapper;
 use OCA\SecretSanta\Exception\InvalidInputException;
@@ -41,6 +43,8 @@ final class ListServiceTest extends TestCase {
 			Server::get(SecretSantaListMapper::class),
 			$this->participantMapper,
 			Server::get(ExclusionMapper::class),
+			Server::get(DrawMapper::class),
+			Server::get(PairingMapper::class),
 		);
 	}
 
@@ -129,6 +133,19 @@ final class ListServiceTest extends TestCase {
 		$this->expectException(InvalidInputException::class);
 		$this->expectExceptionMessage('The subject must not be empty.');
 		$this->service->update($list, mailSubject: ' ');
+	}
+
+	public function testUpdateRejectsPartnerInSubject(): void {
+		$list = $this->service->create(self::USER_ID, 'Christmas');
+
+		try {
+			$this->service->update($list, mailSubject: 'You give {partner} a gift');
+			$this->fail('Expected an exception');
+		} catch (InvalidInputException $error) {
+			$this->assertSame('The subject must not contain the partner.', $error->getMessage());
+			$this->assertSame('translated: The partner can only be mentioned in the text of the email, as mail servers often log the subjects of emails.', $error->getHint());
+		}
+		$this->assertSame('translated: Your Secret Santa partner', $this->service->get($list->getId(), self::USER_ID)->getMailSubject());
 	}
 
 	public function testUpdateRejectsEmptyBody(): void {

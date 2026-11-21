@@ -21,8 +21,6 @@ use Random\Randomizer;
  *
  * Nobody draws themselves, a partner they must not draw, or their partner of the previous draw,
  * and no two participants draw each other.
- *
- * @psalm-api
  */
 final class DrawService {
 

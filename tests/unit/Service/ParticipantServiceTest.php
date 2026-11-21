@@ -10,11 +10,13 @@ declare(strict_types=1);
 namespace OCA\SecretSanta\Tests\Unit\Service;
 
 use OCA\SecretSanta\Db\ExclusionMapper;
+use OCA\SecretSanta\Db\PairingMapper;
 use OCA\SecretSanta\Db\ParticipantMapper;
 use OCA\SecretSanta\Db\SecretSantaList;
 use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\Service\ListService;
 use OCA\SecretSanta\Service\ParticipantService;
+use OCA\SecretSanta\Service\Recipient;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
 use OCP\IGroupManager;
@@ -89,6 +91,7 @@ final class ParticipantServiceTest extends TestCase {
 			Server::get(IEmailValidator::class),
 			Server::get(ParticipantMapper::class),
 			Server::get(ExclusionMapper::class),
+			Server::get(PairingMapper::class),
 		);
 	}
 
@@ -275,6 +278,29 @@ final class ParticipantServiceTest extends TestCase {
 		$this->expectException(\InvalidArgumentException::class);
 		$this->expectExceptionMessage('Only guests can be changed.');
 		$service->updateGuest($this->list, $participant, 'Bob', 'bob@example.com');
+	}
+
+	public function testGetRecipient(): void {
+		$service = $this->createService();
+		$guest = $service->addGuest($this->list, 'Alice', 'alice@example.com');
+		$user = $service->addUser($this->list, self::USER);
+		$this->user->setSystemEMailAddress('bob@example.com');
+
+		$this->assertEquals(new Recipient('Alice', 'alice@example.com'), $service->getRecipient($guest));
+		$this->assertEquals(new Recipient('Bob Builder', 'bob@example.com'), $service->getRecipient($user));
+	}
+
+	public function testGetRecipientOfUserWithoutEmail(): void {
+		$service = $this->createService();
+		$user = $service->addUser($this->list, self::USER);
+
+		try {
+			$service->getRecipient($user);
+			$this->fail('Expected an exception');
+		} catch (InvalidInputException $error) {
+			$this->assertSame('Participant without email address.', $error->getMessage());
+			$this->assertSame('translated: Bob Builder has no email address and can not be notified.', $error->getHint());
+		}
 	}
 
 	public function testGetRejectsParticipantOfAnotherList(): void {

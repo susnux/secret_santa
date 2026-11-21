@@ -16,7 +16,7 @@
 - Nobody draws the same partner as in the previous draw
 - Exclude partners, e.g. couples, from drawing each other
 ]]></description>
-	<version>0.0.2</version>
+	<version>0.0.3</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="opensource@fthiessen.de">Ferdinand Thiessen</author>
 	<namespace>SecretSanta</namespace>

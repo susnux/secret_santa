@@ -13,7 +13,7 @@ namespace OCA\SecretSanta;
  * Ids are Snowflake IDs, sent as strings as they exceed the safe integer range of JavaScript.
  * `senderName` is the display name of the sender of the emails, the display name of the owner is used if it is null.
  * `mailSubject` and `mailBody` are the email sent to every participant, `{name}` is replaced by the name of the
- * participant and `{partner}` by the name of the participant to give a gift to.
+ * participant and, only in `mailBody`, `{partner}` by the name of the participant to give a gift to.
  *
  * @psalm-type SecretSantaList = array{
  *     id: string,
@@ -40,6 +40,23 @@ namespace OCA\SecretSanta;
  * @psalm-type SecretSantaExclusion = array{
  *     giverId: string,
  *     receiverId: string,
+ * }
+ *
+ * `notifiedAt` is the time the email with their partner was sent to the participant `participantId`,
+ * as Unix timestamp, or null if it could not be sent.
+ *
+ * @psalm-type SecretSantaNotification = array{
+ *     participantId: string,
+ *     notifiedAt: ?int,
+ * }
+ *
+ * A draw of the partners of a list, `createdAt` is the time of the draw as Unix timestamp.
+ * The drawn partners are never returned, they are only sent to the participants.
+ *
+ * @psalm-type SecretSantaDraw = array{
+ *     id: string,
+ *     createdAt: int,
+ *     notifications: list<SecretSantaNotification>,
  * }
  *
  * @psalm-suppress UnusedClass Only used as a container for the response type definitions

@@ -100,6 +100,35 @@ abstract class IntegrationTestCase extends TestCase {
 	}
 
 	/**
+	 * Get the raw emails sent to an address from MailHog, the oldest first, the test is skipped without MailHog.
+	 *
+	 * MailHog is configured with the `MAILHOG_URL` environment variable (e.g. `http://localhost:8025`),
+	 * the instance needs to send its emails to the SMTP server of MailHog.
+	 *
+	 * @return list<string>
+	 */
+	protected function getMails(string $email): array {
+		$url = (string)getenv('MAILHOG_URL');
+		if ($url === '') {
+			$this->markTestSkipped('MailHog is not configured');
+		}
+
+		$response = $this->client->request('GET', rtrim($url, '/') . '/api/v2/search', [
+			RequestOptions::QUERY => ['kind' => 'to', 'query' => $email, 'limit' => 50],
+			RequestOptions::HEADERS => ['OCS-APIRequest' => null],
+		]);
+		$this->assertSame(200, $response->getStatusCode(), 'Failed to search the emails in MailHog');
+		$result = json_decode((string)$response->getBody(), true, flags: JSON_THROW_ON_ERROR);
+		$this->assertIsArray($result);
+
+		$mails = [];
+		foreach (array_reverse($result['items']) as $item) {
+			$mails[] = $item['Raw']['Data'];
+		}
+		return $mails;
+	}
+
+	/**
 	 * Assert the status code of an OCS response and return its data.
 	 */
 	protected function assertOcsResponse(int $expectedStatus, ResponseInterface $response): mixed {

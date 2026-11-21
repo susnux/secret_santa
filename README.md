@@ -44,3 +44,7 @@ They create and delete their own users with the admin account, configured by env
 ```sh
 NEXTCLOUD_URL=http://localhost:8089 composer run test:integration
 ```
+
+The tests that check the partners sent by email need [MailHog](https://github.com/mailhog/MailHog) and are skipped without it.
+Configure the instance to send its emails to the SMTP server of MailHog and set `MAILHOG_URL` to its web interface,
+e.g. `MAILHOG_URL=http://localhost:8025`.

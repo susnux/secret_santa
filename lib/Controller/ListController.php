@@ -95,7 +95,7 @@ final class ListController extends BaseOCSController {
 	 * @param string $listId The id of the list
 	 * @param ?string $name The name of the list (up to 255 characters)
 	 * @param ?string $senderName The display name of the sender of the emails (up to 255 characters), an empty string to use the display name of the owner
-	 * @param ?string $mailSubject The subject of the email (up to 255 characters)
+	 * @param ?string $mailSubject The subject of the email (up to 255 characters), `{name}` is replaced by the name of the participant, `{partner}` is not allowed
 	 * @param ?string $mailBody The text of the email (up to 10000 characters), `{name}` and `{partner}` are replaced by the names of the participant and their partner
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
 	 * @throws OCSBadRequestException Invalid values

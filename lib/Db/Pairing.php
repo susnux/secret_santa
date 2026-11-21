@@ -14,9 +14,13 @@ namespace OCA\SecretSanta\Db;
  */
 final readonly class Pairing {
 
+	/**
+	 * @param ?int $notifiedAt Unix timestamp of the email sent to the giver, null if it was not sent
+	 */
 	public function __construct(
 		public string $giverId,
 		public string $receiverId,
+		public ?int $notifiedAt = null,
 	) {
 	}
 }
