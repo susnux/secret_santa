@@ -7,7 +7,7 @@
 	  xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
 	<id>secret_santa</id>
 	<name>Secret Santa</name>
-	<summary>Organize a secret gift exchange</summary>
+	<summary>🧑‍🎄 Organize a secret gift exchange</summary>
 	<description><![CDATA[Organize a Secret Santa gift exchange ("Wichteln") with Nextcloud users and external guests.
 
 - Create lists of participants, both Nextcloud users and guests by name and email
@@ -16,7 +16,7 @@
 - Nobody draws the same partner as in the previous draw
 - Exclude partners, e.g. couples, from drawing each other
 ]]></description>
-	<version>0.0.1</version>
+	<version>0.0.2</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="opensource@fthiessen.de">Ferdinand Thiessen</author>
 	<namespace>SecretSanta</namespace>
