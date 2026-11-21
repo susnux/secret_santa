@@ -72,7 +72,7 @@ final class ExclusionController extends BaseOCSController {
 	 * @param list<string> $receiverIds The ids of the participants this participant must not draw
 	 * @param bool $mutual Apply the changes in the other direction as well
 	 * @return DataResponse<Http::STATUS_OK, list<SecretSantaExclusion>, array{}>
-	 * @throws OCSBadRequestException A receiver is not a participant of the list or the participant themselves
+	 * @throws OCSBadRequestException A receiver is not a participant of the list or the participant themselves, or the list is archived
 	 * @throws OCSNotFoundException List or participant not found or the list is not owned by the current user
 	 *
 	 * 200: Exclusions changed, all exclusions of the list are returned
@@ -80,7 +80,7 @@ final class ExclusionController extends BaseOCSController {
 	#[NoAdminRequired]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/lists/{listId}/participants/{participantId}/exclusions', requirements: ['listId' => '\d+', 'participantId' => '\d+'])]
 	public function setExclusions(string $listId, string $participantId, array $receiverIds, bool $mutual = true): DataResponse {
-		$list = $this->findList($listId);
+		$list = $this->findEditableList($listId);
 		$participant = $this->findParticipant($list, $participantId);
 		try {
 			$exclusions = $this->exclusionService->setExclusions($list, $participant, $receiverIds, $mutual);
@@ -101,7 +101,7 @@ final class ExclusionController extends BaseOCSController {
 	 * @param string $listId The id of the list
 	 * @param string $sourceListId The id of the list whose latest draw is imported
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
-	 * @throws OCSBadRequestException The partners of the source list have not been drawn yet
+	 * @throws OCSBadRequestException The partners of the source list have not been drawn yet or the list is archived
 	 * @throws OCSNotFoundException List or source list not found or not owned by the current user
 	 *
 	 * 200: Exclusions imported, the list is returned
@@ -109,7 +109,7 @@ final class ExclusionController extends BaseOCSController {
 	#[NoAdminRequired]
 	#[ApiRoute(verb: 'POST', url: '/api/v1/lists/{listId}/exclusions/import', requirements: ['listId' => '\d+'])]
 	public function importExclusions(string $listId, string $sourceListId): DataResponse {
-		$list = $this->findList($listId);
+		$list = $this->findEditableList($listId);
 		$source = $this->findList($sourceListId);
 		try {
 			$list = $this->exclusionService->importDraw($list, $source);
@@ -126,6 +126,7 @@ final class ExclusionController extends BaseOCSController {
 	 *
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
+	 * @throws OCSBadRequestException The list is archived
 	 * @throws OCSNotFoundException List not found or not owned by the current user
 	 *
 	 * 200: Imported exclusions removed, the list is returned
@@ -133,7 +134,7 @@ final class ExclusionController extends BaseOCSController {
 	#[NoAdminRequired]
 	#[ApiRoute(verb: 'DELETE', url: '/api/v1/lists/{listId}/exclusions/imported', requirements: ['listId' => '\d+'])]
 	public function removeImportedExclusions(string $listId): DataResponse {
-		$list = $this->exclusionService->removeImported($this->findList($listId));
+		$list = $this->exclusionService->removeImported($this->findEditableList($listId));
 		return new DataResponse($this->listService->serialize($list));
 	}
 }

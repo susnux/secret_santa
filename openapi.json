@@ -70,7 +70,8 @@
                     "senderName",
                     "mailSubject",
                     "mailBody",
-                    "exclusionsImported"
+                    "exclusionsImported",
+                    "archivedAt"
                 ],
                 "properties": {
                     "id": {
@@ -91,6 +92,11 @@
                     },
                     "exclusionsImported": {
                         "type": "boolean"
+                    },
+                    "archivedAt": {
+                        "type": "integer",
+                        "format": "int64",
+                        "nullable": true
                     }
                 }
             },
@@ -365,7 +371,7 @@
                         }
                     },
                     "400": {
-                        "description": "A participant has no email address, too few participants or not at least two valid draws exist",
+                        "description": "A participant has no email address, too few participants, not at least two valid draws exist or the list is archived",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -579,7 +585,7 @@
                         }
                     },
                     "400": {
-                        "description": "Not the latest draw, the draw is outdated, the participant did not take part in it or has no email address",
+                        "description": "Not the latest draw, the draw is outdated, the participant did not take part in it or has no email address, or the list is archived",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -906,7 +912,7 @@
                         }
                     },
                     "400": {
-                        "description": "A receiver is not a participant of the list or the participant themselves",
+                        "description": "A receiver is not a participant of the list or the participant themselves, or the list is archived",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1081,7 +1087,7 @@
                         }
                     },
                     "400": {
-                        "description": "The partners of the source list have not been drawn yet",
+                        "description": "The partners of the source list have not been drawn yet or the list is archived",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1228,6 +1234,34 @@
                                                 "data": {
                                                     "$ref": "#/components/schemas/List"
                                                 }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The list is archived",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
                                             }
                                         }
                                     }
@@ -1752,7 +1786,7 @@
                         }
                     },
                     "400": {
-                        "description": "Invalid values",
+                        "description": "Invalid values or the list is archived",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1896,6 +1930,259 @@
                                                 },
                                                 "data": {
                                                     "nullable": true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "List not found or not owned by the current user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ocs/v2.php/apps/secret_santa/api/v1/lists/{listId}/archive": {
+            "post": {
+                "operationId": "list-archive-list",
+                "summary": "Archive a list",
+                "description": "Archived lists can not be changed until they are unarchived, but they can be deleted and their draws can still be imported as exclusions.",
+                "tags": [
+                    "list"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "listId",
+                        "in": "path",
+                        "description": "The id of the list",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^\\d+$"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List archived",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/List"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "List not found or not owned by the current user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "list-unarchive-list",
+                "summary": "Unarchive a list",
+                "tags": [
+                    "list"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "listId",
+                        "in": "path",
+                        "description": "The id of the list",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^\\d+$"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List unarchived",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/List"
                                                 }
                                             }
                                         }
@@ -2191,7 +2478,7 @@
                         }
                     },
                     "400": {
-                        "description": "Unknown user, invalid values, already a participant or too many participants",
+                        "description": "Unknown user, invalid values, already a participant, too many participants or the list is archived",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2380,7 +2667,7 @@
                         }
                     },
                     "400": {
-                        "description": "Invalid values or the participant is a Nextcloud user",
+                        "description": "Invalid values, the participant is a Nextcloud user or the list is archived",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2535,6 +2822,34 @@
                                                 "data": {
                                                     "nullable": true
                                                 }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The list is archived",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
                                             }
                                         }
                                     }

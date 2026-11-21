@@ -6,18 +6,21 @@
 <script setup lang="ts">
 import type { IDraw, IExclusion, IParticipant } from '../models/types.ts'
 
+import { mdiArchiveArrowUpOutline } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import NcButton from '@nextcloud/vue/components/NcButton'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import DrawSection from '../components/DrawSection.vue'
 import MailSection from '../components/MailSection.vue'
 import ParticipantsSection from '../components/ParticipantsSection.vue'
-import { fetchDraws, fetchExclusions, fetchParticipants } from '../api/index.ts'
+import { fetchDraws, fetchExclusions, fetchParticipants, unarchiveList } from '../api/index.ts'
 import { useListsStore } from '../store/lists.ts'
-import { isNotFoundError } from '../utils/errors.ts'
+import { getOcsErrorMessage, isNotFoundError } from '../utils/errors.ts'
 import logger from '../utils/logger.ts'
 
 const props = defineProps<{
@@ -33,9 +36,11 @@ const exclusions = ref<IExclusion[]>([])
 const draws = ref<IDraw[]>([])
 const loading = ref(true)
 const failed = ref(false)
+const unarchiveError = ref('')
 
 watch(() => props.listId, async (listId) => {
 	loading.value = true
+	unarchiveError.value = ''
 	await store.ready
 	if (listId !== props.listId) {
 		return
@@ -80,6 +85,19 @@ async function load() {
 	}
 	loading.value = false
 }
+
+/**
+ * Unarchive the list, so it can be changed again
+ */
+async function unarchive() {
+	unarchiveError.value = ''
+	try {
+		store.setList(await unarchiveList(props.listId))
+	} catch (error) {
+		logger.error('Failed to unarchive the list', { error })
+		unarchiveError.value = getOcsErrorMessage(error) ?? t('secret_santa', 'Could not unarchive the list.')
+	}
+}
 </script>
 
 <template>
@@ -93,6 +111,16 @@ async function load() {
 		<h2 :class="$style.listView__heading">
 			{{ list.name }}
 		</h2>
+		<NcNoteCard v-if="list.archivedAt !== null" type="info">
+			<p>{{ t('secret_santa', 'This list is archived and can not be changed.') }}</p>
+			<NcButton :class="$style.listView__unarchive" variant="secondary" @click="unarchive">
+				<template #icon>
+					<NcIconSvgWrapper :path="mdiArchiveArrowUpOutline" />
+				</template>
+				{{ t('secret_santa', 'Unarchive') }}
+			</NcButton>
+		</NcNoteCard>
+		<NcNoteCard v-if="unarchiveError" type="error" :text="unarchiveError" />
 		<ParticipantsSection
 			v-model:exclusions="exclusions"
 			:list="list"
@@ -122,5 +150,9 @@ async function load() {
 
 .listView__heading {
 	margin-block: 0 calc(4 * var(--default-grid-baseline));
+}
+
+.listView__unarchive {
+	margin-block-start: var(--default-grid-baseline);
 }
 </style>

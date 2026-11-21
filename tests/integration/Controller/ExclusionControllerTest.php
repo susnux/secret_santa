@@ -182,7 +182,12 @@ final class ExclusionControllerTest extends IntegrationTestCase {
 		$this->assertOcsResponse(201, $this->drawResponse());
 	}
 
-	public function testImportFromAnotherList(): void {
+	/**
+	 * Create a list with the same participants as the list of the test and draw its partners
+	 *
+	 * @return string The id of the list
+	 */
+	private function createDrawnList(): string {
 		$lastYear = $this->createList($this->alice, 'Last year');
 		foreach (['carol', 'dave', 'erin'] as $name) {
 			$this->assertOcsResponse(201, $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $lastYear . '/participants', [
@@ -190,10 +195,34 @@ final class ExclusionControllerTest extends IntegrationTestCase {
 			]));
 		}
 		$this->assertOcsResponse(201, $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $lastYear . '/draws'));
+		return $lastYear;
+	}
+
+	public function testImportFromAnotherList(): void {
+		$lastYear = $this->createDrawnList();
 
 		$this->assertOcsResponse(200, $this->importExclusions($this->alice, $this->listId, $lastYear));
 
 		$this->assertOcsResponse(400, $this->drawResponse());
+	}
+
+	public function testImportFromArchivedList(): void {
+		$lastYear = $this->createDrawnList();
+		$this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $lastYear . '/archive'));
+
+		$this->assertOcsResponse(200, $this->importExclusions($this->alice, $this->listId, $lastYear));
+
+		$this->assertOcsResponse(400, $this->drawResponse());
+	}
+
+	public function testImportIntoArchivedListIsRefused(): void {
+		$lastYear = $this->createDrawnList();
+		$this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $this->listId . '/archive'));
+
+		$this->assertOcsResponse(400, $this->importExclusions($this->alice, $this->listId, $lastYear));
+
+		$list = $this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'GET', 'api/v1/lists/' . $this->listId));
+		$this->assertFalse($list['exclusionsImported']);
 	}
 
 	public function testImportWithoutDraw(): void {

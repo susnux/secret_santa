@@ -52,4 +52,21 @@ describe('lists store', () => {
 		store.removeList('1')
 		expect(store.lists.map(({ id }) => id)).toEqual(['2'])
 	})
+
+	it('separates the active and the archived lists', async () => {
+		fetchLists.mockResolvedValue([
+			createTestList({ id: '1', archivedAt: 100 }),
+			createTestList({ id: '2' }),
+			createTestList({ id: '3', archivedAt: 200 }),
+		])
+		const store = useListsStore()
+		await flushPromises()
+
+		expect(store.activeLists.map(({ id }) => id)).toEqual(['2'])
+		expect(store.archivedLists.map(({ id }) => id)).toEqual(['3', '1'])
+
+		store.setList(createTestList({ id: '2', archivedAt: 300 }))
+		expect(store.activeLists).toEqual([])
+		expect(store.archivedLists.map(({ id }) => id)).toEqual(['2', '3', '1'])
+	})
 })

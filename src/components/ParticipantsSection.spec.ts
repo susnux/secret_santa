@@ -90,6 +90,15 @@ describe('ParticipantsSection', () => {
 		document.body.innerHTML = ''
 	})
 
+	it('only shows the participants of archived lists', () => {
+		const wrapper = mountSection(createTestList({ archivedAt: 1_766_000_000, exclusionsImported: true }))
+
+		expect(wrapper.findComponent(NcSelectUsers).exists()).toBe(false)
+		expect(wrapper.findAll('button').map((button) => button.text())).toEqual([])
+		expect(wrapper.text()).toContain('Does not draw: Bob & Co, Carol')
+		expect(wrapper.text()).toContain('Exclusions were imported from earlier draws')
+	})
+
 	it('shows the participants with their email address and excluded partners', () => {
 		const wrapper = mountSection()
 

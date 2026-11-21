@@ -9,11 +9,13 @@ import { generateUrl } from '@nextcloud/router'
 import { createRouter, createWebHistory } from 'vue-router'
 import EmptyView from './views/EmptyView.vue'
 
+const ArchivedListsView = () => import('./views/ArchivedListsView.vue')
 const ListView = () => import('./views/ListView.vue')
 
 export const routes = [
 	{ path: '/', name: 'root', component: EmptyView },
 	{ path: '/not-found', name: 'not-found', component: EmptyView },
+	{ path: '/archived', name: 'archived', component: ArchivedListsView },
 	{
 		path: '/:listId(\\d+)',
 		name: 'list',

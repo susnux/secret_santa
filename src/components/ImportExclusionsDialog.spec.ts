@@ -53,6 +53,17 @@ describe('ImportExclusionsDialog', () => {
 		expect(getImportButton().disabled).toBe(true)
 	})
 
+	it('shows the archived lists last', async () => {
+		const wrapper = mount(ImportExclusionsDialog, {
+			attachTo: document.body,
+			props: { list, lists: [createTestList({ id: '9', name: 'Archived', archivedAt: 1_766_000_000 }), list, lastYear] },
+		})
+		await flushPromises()
+
+		const options = wrapper.findAllComponents(NcCheckboxRadioSwitch)
+		expect(options.map((option) => option.text())).toEqual(['Christmas (this list)', 'Last year & more', 'Archived (archived)'])
+	})
+
 	it('imports the partners of the selected list', async () => {
 		const updated = createTestList({ exclusionsImported: true })
 		importExclusions.mockResolvedValue(updated)

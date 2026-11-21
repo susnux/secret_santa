@@ -16,6 +16,8 @@ namespace OCA\SecretSanta;
  * participant and, only in `mailBody`, `{partner}` by the name of the participant to give a gift to.
  * `exclusionsImported` is set if the partners of draws were imported as exclusions. These exclusions are only
  * used for drawing and never returned, as they would reveal the partners of those draws.
+ * `archivedAt` is the time the list was archived as Unix timestamp, or null if it is not archived.
+ * Archived lists can not be changed until they are unarchived, but their draws can still be imported as exclusions.
  *
  * @psalm-type SecretSantaList = array{
  *     id: string,
@@ -24,6 +26,7 @@ namespace OCA\SecretSanta;
  *     mailSubject: string,
  *     mailBody: string,
  *     exclusionsImported: bool,
+ *     archivedAt: ?int,
  * }
  *
  * `userId` is set for Nextcloud users and null for guests.

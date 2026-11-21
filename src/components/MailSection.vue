@@ -26,6 +26,8 @@ const emit = defineEmits<{
 	'update:list': [list: ISecretSantaList]
 }>()
 
+const readonly = computed(() => props.list.archivedAt !== null)
+
 const senderName = ref('')
 const mailSubject = ref('')
 const mailBody = ref('')
@@ -95,7 +97,7 @@ async function save() {
 		<h3 :id="`secret-santa-mail-${list.id}`">
 			{{ t('secret_santa', 'Email') }}
 		</h3>
-		<form :class="$style.mailSection__form" @submit.prevent="save">
+		<form v-if="!readonly" :class="$style.mailSection__form" @submit.prevent="save">
 			<NcTextField
 				v-model="senderName"
 				:maxlength="255"

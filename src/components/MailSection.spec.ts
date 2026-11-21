@@ -54,6 +54,13 @@ describe('MailSection', () => {
 		expect(wrapper.find('dd').text()).toBe('Santa')
 	})
 
+	it('only previews the email of archived lists', () => {
+		const wrapper = mount(MailSection, { props: { list: { ...list, archivedAt: 1_766_000_000 }, participants: [createTestGuest('1', 'Alice')] } })
+
+		expect(wrapper.find('form').exists()).toBe(false)
+		expect(wrapper.find('[data-preview="subject"]').text()).toBe('Hi Alice, about {partner}')
+	})
+
 	it('saves the changed email', async () => {
 		const updated = createTestList({ ...list, senderName: 'Santa', mailSubject: 'Psst' })
 		updateList.mockResolvedValue(updated)

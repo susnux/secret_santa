@@ -76,7 +76,7 @@ final class DrawController extends BaseOCSController {
 	 *
 	 * @param string $listId The id of the list
 	 * @return DataResponse<Http::STATUS_CREATED, SecretSantaDraw, array{}>
-	 * @throws OCSBadRequestException A participant has no email address, too few participants or not at least two valid draws exist
+	 * @throws OCSBadRequestException A participant has no email address, too few participants, not at least two valid draws exist or the list is archived
 	 * @throws OCSNotFoundException List not found or not owned by the current user
 	 *
 	 * 201: Partners drawn
@@ -85,7 +85,7 @@ final class DrawController extends BaseOCSController {
 	#[UserRateLimit(limit: 5, period: 3600)]
 	#[ApiRoute(verb: 'POST', url: '/api/v1/lists/{listId}/draws', requirements: ['listId' => '\d+'])]
 	public function createDraw(string $listId): DataResponse {
-		$list = $this->findList($listId);
+		$list = $this->findEditableList($listId);
 		try {
 			$draw = $this->drawManager->draw($list);
 		} catch (InvalidInputException $error) {
@@ -103,7 +103,7 @@ final class DrawController extends BaseOCSController {
 	 * @param string $drawId The id of the draw
 	 * @param string $participantId The id of the participant
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaDraw, array{}>|DataResponse<Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
-	 * @throws OCSBadRequestException Not the latest draw, the draw is outdated, the participant did not take part in it or has no email address
+	 * @throws OCSBadRequestException Not the latest draw, the draw is outdated, the participant did not take part in it or has no email address, or the list is archived
 	 * @throws OCSNotFoundException List, draw or participant not found or the list is not owned by the current user
 	 *
 	 * 200: Email sent
@@ -113,7 +113,7 @@ final class DrawController extends BaseOCSController {
 	#[UserRateLimit(limit: 20, period: 3600)]
 	#[ApiRoute(verb: 'POST', url: '/api/v1/lists/{listId}/draws/{drawId}/participants/{participantId}/notify', requirements: ['listId' => '\d+', 'drawId' => '\d+', 'participantId' => '\d+'])]
 	public function notifyParticipant(string $listId, string $drawId, string $participantId): DataResponse {
-		$list = $this->findList($listId);
+		$list = $this->findEditableList($listId);
 		$draw = $this->findDraw($list, $drawId);
 		$participant = $this->findParticipant($list, $participantId);
 		try {

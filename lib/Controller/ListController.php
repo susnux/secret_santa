@@ -98,7 +98,7 @@ final class ListController extends BaseOCSController {
 	 * @param ?string $mailSubject The subject of the email (up to 255 characters), `{name}` is replaced by the name of the participant, `{partner}` is not allowed
 	 * @param ?string $mailBody The text of the email (up to 10000 characters), `{name}` and `{partner}` are replaced by the names of the participant and their partner
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
-	 * @throws OCSBadRequestException Invalid values
+	 * @throws OCSBadRequestException Invalid values or the list is archived
 	 * @throws OCSNotFoundException List not found or not owned by the current user
 	 *
 	 * 200: List changed
@@ -112,7 +112,7 @@ final class ListController extends BaseOCSController {
 		?string $mailSubject = null,
 		?string $mailBody = null,
 	): DataResponse {
-		$list = $this->findList($listId);
+		$list = $this->findEditableList($listId);
 		try {
 			$list = $this->listService->update($list, $name, $senderName, $mailSubject, $mailBody);
 		} catch (InvalidInputException $error) {
@@ -120,6 +120,41 @@ final class ListController extends BaseOCSController {
 		} catch (InvalidArgumentException $error) {
 			throw new OCSBadRequestException($error->getMessage());
 		}
+		return new DataResponse($this->listService->serialize($list));
+	}
+
+	/**
+	 * Archive a list
+	 *
+	 * Archived lists can not be changed until they are unarchived, but they can be deleted
+	 * and their draws can still be imported as exclusions.
+	 *
+	 * @param string $listId The id of the list
+	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
+	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 *
+	 * 200: List archived
+	 */
+	#[NoAdminRequired]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/lists/{listId}/archive', requirements: ['listId' => '\d+'])]
+	public function archiveList(string $listId): DataResponse {
+		$list = $this->listService->archive($this->findList($listId));
+		return new DataResponse($this->listService->serialize($list));
+	}
+
+	/**
+	 * Unarchive a list
+	 *
+	 * @param string $listId The id of the list
+	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
+	 * @throws OCSNotFoundException List not found or not owned by the current user
+	 *
+	 * 200: List unarchived
+	 */
+	#[NoAdminRequired]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/lists/{listId}/archive', requirements: ['listId' => '\d+'])]
+	public function unarchiveList(string $listId): DataResponse {
+		$list = $this->listService->unarchive($this->findList($listId));
 		return new DataResponse($this->listService->serialize($list));
 	}
 

@@ -44,6 +44,8 @@ const emit = defineEmits<{
 
 const error = ref('')
 
+const readonly = computed(() => props.list.archivedAt !== null)
+
 /**
  * Get the participants the given participant must not draw
  *
@@ -203,7 +205,7 @@ async function remove(participant: IParticipant) {
 		<h3 :id="`secret-santa-participants-${list.id}`">
 			{{ t('secret_santa', 'Participants') }}
 		</h3>
-		<div :class="$style.participantsSection__add">
+		<div v-if="!readonly" :class="$style.participantsSection__add">
 			<NcSelectUsers
 				:key="userSelectKey"
 				:class="$style.participantsSection__select"
@@ -222,7 +224,9 @@ async function remove(participant: IParticipant) {
 		</div>
 		<NcNoteCard v-if="error" type="error" :text="error" />
 		<p v-if="participants.length === 0" :class="$style.participantsSection__empty">
-			{{ t('secret_santa', 'No participants yet. Add Nextcloud accounts or guests with their email address.') }}
+			{{ readonly
+				? t('secret_santa', 'No participants.')
+				: t('secret_santa', 'No participants yet. Add Nextcloud accounts or guests with their email address.') }}
 		</p>
 		<ul v-else :class="$style.participantsSection__list">
 			<li
@@ -241,7 +245,7 @@ async function remove(participant: IParticipant) {
 						{{ t('secret_santa', 'Does not draw: {names}', { names: getExcludedNames(participant) }, PLAIN_TEXT) }}
 					</p>
 				</div>
-				<NcActions :aria-label="t('secret_santa', 'Actions for {name}', { name: participant.displayName }, PLAIN_TEXT)">
+				<NcActions v-if="!readonly" :aria-label="t('secret_santa', 'Actions for {name}', { name: participant.displayName }, PLAIN_TEXT)">
 					<NcActionButton closeAfterClick @click="editExclusions(participant)">
 						<template #icon>
 							<NcIconSvgWrapper :path="mdiAccountMultipleRemoveOutline" />
@@ -267,11 +271,15 @@ async function remove(participant: IParticipant) {
 			<p>
 				{{ t('secret_santa', 'Exclusions were imported from earlier draws: nobody draws the partner they drew there. They are not shown, as they would reveal who drew whom.') }}
 			</p>
-			<NcButton :class="$style.participantsSection__removeImported" variant="tertiary" @click="removeImported">
+			<NcButton
+				v-if="!readonly"
+				:class="$style.participantsSection__removeImported"
+				variant="tertiary"
+				@click="removeImported">
 				{{ t('secret_santa', 'Remove imported exclusions') }}
 			</NcButton>
 		</NcNoteCard>
-		<NcButton :class="$style.participantsSection__import" @click="importDraw">
+		<NcButton v-if="!readonly" :class="$style.participantsSection__import" @click="importDraw">
 			<template #icon>
 				<NcIconSvgWrapper :path="mdiHistory" />
 			</template>

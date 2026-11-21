@@ -19,7 +19,7 @@ import logger from '../utils/logger.ts'
 const props = defineProps<{
 	/** The list to import the exclusions into */
 	list: ISecretSantaList
-	/** The lists of the user, the partners of their latest draw can be imported */
+	/** The lists of the user including the archived ones, the partners of their latest draw can be imported */
 	lists: ISecretSantaList[]
 }>()
 
@@ -28,6 +28,27 @@ const emit = defineEmits<{
 }>()
 
 const sourceListId = ref<string>()
+
+/** The lists to import from, the archived lists last */
+const sources = computed(() => [
+	...props.lists.filter(({ archivedAt }) => archivedAt === null),
+	...props.lists.filter(({ archivedAt }) => archivedAt !== null),
+])
+
+/**
+ * Get the label of a list to import from
+ *
+ * @param source - The list
+ */
+function getLabel(source: ISecretSantaList): string {
+	if (source.id === props.list.id) {
+		return t('secret_santa', '{name} (this list)', { name: source.name }, PLAIN_TEXT)
+	}
+	if (source.archivedAt !== null) {
+		return t('secret_santa', '{name} (archived)', { name: source.name }, PLAIN_TEXT)
+	}
+	return source.name
+}
 
 const saved = ref<ISecretSantaList>()
 const error = ref('')
@@ -94,13 +115,13 @@ function onUpdateOpen(open: boolean) {
 				{{ t('secret_santa', 'Import the partners of:') }}
 			</legend>
 			<NcCheckboxRadioSwitch
-				v-for="source in lists"
+				v-for="source in sources"
 				:key="source.id"
 				v-model="sourceListId"
 				type="radio"
 				name="secret-santa-import-source"
 				:value="source.id">
-				{{ source.id === list.id ? t('secret_santa', '{name} (this list)', { name: source.name }, PLAIN_TEXT) : source.name }}
+				{{ getLabel(source) }}
 			</NcCheckboxRadioSwitch>
 		</fieldset>
 		<NcNoteCard v-if="error" type="error" :text="error" />

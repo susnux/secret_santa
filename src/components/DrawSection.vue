@@ -30,6 +30,8 @@ const props = defineProps<{
 /** Minimum number of participants of a draw, see `DrawService::MIN_PARTICIPANTS` */
 const MIN_PARTICIPANTS = 3
 
+const readonly = computed(() => props.list.archivedAt !== null)
+
 const latestDraw = computed(() => draws.value[0])
 const previousDraws = computed(() => draws.value.slice(1))
 
@@ -118,22 +120,24 @@ function getName(participantId: string): string {
 		<p :class="$style.drawSection__description">
 			{{ t('secret_santa', 'Every participant gets an email with the partner they give a gift to. Nobody draws themselves or a partner they must not draw. The partners are only sent by email, you will not see them here.') }}
 		</p>
-		<NcNoteCard
-			v-for="problem in problems"
-			:key="problem"
-			type="warning"
-			:text="problem" />
+		<template v-if="!readonly">
+			<NcNoteCard
+				v-for="problem in problems"
+				:key="problem"
+				type="warning"
+				:text="problem" />
+			<NcButton
+				variant="primary"
+				:disabled="problems.length > 0 || drawing"
+				@click="confirmOpen = true">
+				<template #icon>
+					<NcLoadingIcon v-if="drawing" />
+					<NcIconSvgWrapper v-else :path="mdiShuffleVariant" />
+				</template>
+				{{ t('secret_santa', 'Draw partners and send emails') }}
+			</NcButton>
+		</template>
 		<NcNoteCard v-if="error" type="error" :text="error" />
-		<NcButton
-			variant="primary"
-			:disabled="problems.length > 0 || drawing"
-			@click="confirmOpen = true">
-			<template #icon>
-				<NcLoadingIcon v-if="drawing" />
-				<NcIconSvgWrapper v-else :path="mdiShuffleVariant" />
-			</template>
-			{{ t('secret_santa', 'Draw partners and send emails') }}
-		</NcButton>
 		<NcDialog
 			v-model:open="confirmOpen"
 			:buttons="confirmButtons"
@@ -144,7 +148,7 @@ function getName(participantId: string): string {
 
 		<template v-if="latestDraw">
 			<NcNoteCard
-				v-if="latestDraw.outdated"
+				v-if="latestDraw.outdated && !readonly"
 				type="warning"
 				:text="t('secret_santa', 'Participants of the latest draw were removed, so others have no partner anymore. Draw the partners again.')" />
 			<h4 :class="$style.drawSection__heading">
@@ -169,6 +173,7 @@ function getName(participantId: string): string {
 						{{ t('secret_santa', 'Email not sent') }}
 					</span>
 					<NcButton
+						v-if="!readonly"
 						:aria-label="t('secret_santa', 'Send the email to {name} again', { name: getName(notification.participantId) }, PLAIN_TEXT)"
 						:disabled="notifying !== undefined || latestDraw.outdated"
 						:variant="notification.notifiedAt ? 'tertiary' : 'secondary'"
