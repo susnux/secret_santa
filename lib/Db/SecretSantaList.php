@@ -28,6 +28,8 @@ use OCP\DB\Types;
  * @method void setMailSubject(string $value)
  * @method string getMailBody()
  * @method void setMailBody(string $value)
+ * @method ?bool getExclusionsImported()
+ * @method void setExclusionsImported(bool $value)
  */
 final class SecretSantaList extends SnowflakeAwareEntity {
 
@@ -58,12 +60,19 @@ final class SecretSantaList extends SnowflakeAwareEntity {
 	 */
 	protected $mailBody;
 
+	/**
+	 * Partners of draws were imported as exclusions
+	 * @var ?bool
+	 */
+	protected $exclusionsImported;
+
 	public function __construct() {
 		$this->addType('owner', Types::STRING);
 		$this->addType('name', Types::STRING);
 		$this->addType('senderName', Types::STRING);
 		$this->addType('mailSubject', Types::STRING);
 		$this->addType('mailBody', Types::STRING);
+		$this->addType('exclusionsImported', Types::BOOLEAN);
 	}
 
 }

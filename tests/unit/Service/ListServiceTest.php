@@ -187,6 +187,7 @@ final class ListServiceTest extends TestCase {
 			'senderName' => null,
 			'mailSubject' => $list->getMailSubject(),
 			'mailBody' => $list->getMailBody(),
+			'exclusionsImported' => false,
 		], $this->service->serialize($list));
 	}
 }

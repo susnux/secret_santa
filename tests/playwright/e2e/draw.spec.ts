@@ -32,7 +32,7 @@ test.describe('Draw', () => {
 		await secretSantaApp.notification('Carol').getByRole('button', { name: 'Send the email to Carol again' }).click()
 		await expect(secretSantaApp.notification('Carol')).toContainText('Email sent')
 
-		// a second draw avoids the partners of the first one
+		// a second draw replaces the first one
 		await secretSantaApp.draw()
 		await expect(secretSantaApp.section('Draw').getByRole('heading', { name: 'Previous draws' })).toBeVisible()
 		await expect(secretSantaApp.dialog('Draw the partners?')).toBeHidden()
@@ -48,14 +48,16 @@ test.describe('Draw', () => {
 	})
 
 	test('refuses a draw that is the only possible one', async ({ secretSantaApp }) => {
-		await secretSantaApp.openList(await secretSantaApp.createListWithGuests('Christmas party', ['Alice', 'Bob', 'Carol']))
-		await secretSantaApp.draw()
-		await expect(secretSantaApp.notification('Alice')).toContainText('Email sent')
+		const listId = await secretSantaApp.createListWithGuests('Christmas party', ['Alice', 'Bob', 'Carol'])
+		const participants = await secretSantaApp.api('GET', `lists/${listId}/participants`) as { id: string }[]
+		// one exclusion in one direction leaves only one possible draw of three participants
+		await secretSantaApp.api('PUT', `lists/${listId}/participants/${participants[0]!.id}/exclusions`, { receiverIds: [participants[1]!.id], mutual: false })
+		await secretSantaApp.openList(listId)
 
 		await secretSantaApp.draw()
 
 		await expect(secretSantaApp.section('Draw')).toContainText('Only one draw is possible with these participants')
-		await expect(secretSantaApp.section('Draw').getByRole('heading', { name: 'Previous draws' })).toHaveCount(0)
+		await expect(secretSantaApp.section('Draw').getByRole('heading', { name: 'Latest draw' })).toHaveCount(0)
 	})
 
 	test('asks to draw again after a participant was removed', async ({ secretSantaApp }) => {

@@ -19,10 +19,9 @@ use Random\Randomizer;
 /**
  * Draws the partner every participant gives a gift to.
  *
- * Nobody draws themselves, a partner they must not draw, or their partner of the previous draw,
- * and no two participants draw each other.
+ * Nobody draws themselves or a partner they must not draw, and no two participants draw each other.
  * A draw is only made if another valid draw exists, otherwise the partners could be deduced from these rules,
- * e.g. three participants could deduce the previous draw from the current one.
+ * e.g. three participants could deduce the partners of the draw that their exclusions were imported from.
  */
 final class DrawService {
 
@@ -44,12 +43,11 @@ final class DrawService {
 	 *
 	 * @param list<string> $participantIds
 	 * @param list<Exclusion> $exclusions Partners participants must not draw
-	 * @param list<Pairing> $previousPairings The pairings of the previous draw, which must not be repeated
 	 * @return list<Pairing> One pairing for every participant
 	 * @throws InvalidInputException If there are too few participants or not at least two valid draws exist
 	 * @throws InvalidArgumentException If a participant is listed twice
 	 */
-	public function draw(array $participantIds, array $exclusions, array $previousPairings): array {
+	public function draw(array $participantIds, array $exclusions): array {
 		if (count(array_unique($participantIds)) !== count($participantIds)) {
 			throw new InvalidArgumentException('Every participant can only take part once.');
 		}
@@ -63,9 +61,9 @@ final class DrawService {
 		// Participants are referenced by their position, as numeric ids would be converted to integers as array keys
 		$positions = array_flip($participantIds);
 		$forbidden = [];
-		foreach ([...$exclusions, ...$previousPairings] as $pair) {
-			if (isset($positions[$pair->giverId], $positions[$pair->receiverId])) {
-				$forbidden[$positions[$pair->giverId]][$positions[$pair->receiverId]] = true;
+		foreach ($exclusions as $exclusion) {
+			if (isset($positions[$exclusion->giverId], $positions[$exclusion->receiverId])) {
+				$forbidden[$positions[$exclusion->giverId]][$positions[$exclusion->receiverId]] = true;
 			}
 		}
 
@@ -92,7 +90,7 @@ final class DrawService {
 		if (!$this->hasOtherDraw($candidates, $receiverOf)) {
 			throw new InvalidInputException(
 				'Only one valid draw exists.',
-				$this->l10n->t('Only one draw is possible with these participants, exclusions and the previous draw, so everybody could find out who drew whom. Add more participants or remove exclusions.'),
+				$this->l10n->t('Only one draw is possible with these participants and exclusions, so everybody could find out who drew whom. Add more participants or remove exclusions.'),
 			);
 		}
 

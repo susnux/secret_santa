@@ -334,4 +334,46 @@ final class ParticipantServiceTest extends TestCase {
 		$this->assertSame([], $service->getParticipants($this->list));
 		$this->assertSame([$guest->getId()], $this->getParticipantIds($service, $other));
 	}
+
+	public function testMatchParticipants(): void {
+		$service = $this->createService();
+		$this->owner->setSystemEMailAddress('owner@example.com');
+		$lastYear = $this->listService->create(self::OWNER, 'Last year');
+		$user = $service->addUser($lastYear, self::USER);
+		$owner = $service->addUser($lastYear, self::OWNER);
+		$carol = $service->addGuest($lastYear, 'Carol', 'carol@example.com');
+		$dave = $service->addGuest($lastYear, 'Dave', 'dave@example.com');
+
+		$matchingUser = $service->addUser($this->list, self::USER);
+		$ownerAsGuest = $service->addGuest($this->list, 'The owner', 'Owner@Example.com');
+		$matchingCarol = $service->addGuest($this->list, 'Caroline', 'CAROL@example.com');
+		$service->addGuest($this->list, 'Erin', 'erin@example.com');
+
+		$matches = $service->matchParticipants($service->getParticipants($lastYear), $service->getParticipants($this->list));
+
+		$this->assertSame($matchingUser->getId(), $matches[$user->getId()]);
+		$this->assertSame($ownerAsGuest->getId(), $matches[$owner->getId()]);
+		$this->assertSame($matchingCarol->getId(), $matches[$carol->getId()]);
+		$this->assertArrayNotHasKey($dave->getId(), $matches);
+		$this->assertCount(3, $matches);
+	}
+
+	public function testAmbiguousParticipantsAreNotMatched(): void {
+		$service = $this->createService();
+		$this->user->setSystemEMailAddress('bob@example.com');
+		$lastYear = $this->listService->create(self::OWNER, 'Last year');
+		// The user and a guest with the email address of the user are the same person in the other list
+		$service->addUser($lastYear, self::USER);
+		$service->addGuest($lastYear, 'Bob', 'bob@example.com');
+		$carol = $service->addGuest($lastYear, 'Carol', 'carol@example.com');
+
+		$service->addUser($this->list, self::USER);
+		// Two participants with the email address of carol
+		$service->addUser($this->list, self::OWNER);
+		$this->owner->setSystemEMailAddress('carol@example.com');
+		$service->addGuest($this->list, 'Carol', 'carol@example.com');
+
+		$this->assertSame([], $service->matchParticipants($service->getParticipants($lastYear), $service->getParticipants($this->list)));
+		$this->assertArrayNotHasKey($carol->getId(), $service->matchParticipants([$carol], $service->getParticipants($this->list)));
+	}
 }

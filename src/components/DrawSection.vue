@@ -116,7 +116,7 @@ function getName(participantId: string): string {
 			{{ t('secret_santa', 'Draw') }}
 		</h3>
 		<p :class="$style.drawSection__description">
-			{{ t('secret_santa', 'Every participant gets an email with the partner they give a gift to. Nobody draws themselves, a partner they must not draw or their partner of the previous draw. The partners are only sent by email, you will not see them here.') }}
+			{{ t('secret_santa', 'Every participant gets an email with the partner they give a gift to. Nobody draws themselves or a partner they must not draw. The partners are only sent by email, you will not see them here.') }}
 		</p>
 		<NcNoteCard
 			v-for="problem in problems"

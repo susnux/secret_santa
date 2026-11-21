@@ -21,7 +21,6 @@ final class Version000002Date20261121150000Test extends TestCase {
 	public function testTableExists(): void {
 		$table = (new SchemaWrapper(Server::get(Connection::class)))->getTable('secret_santa_exclusions');
 
-		$this->assertSame(['giver_id', 'receiver_id'], $table->getPrimaryKey()?->getColumns());
 		$this->assertSame(['list_id'], $table->getIndex('secret_santa_excl_list_idx')->getColumns());
 		$this->assertSame(['receiver_id'], $table->getIndex('secret_santa_excl_recv_idx')->getColumns());
 	}

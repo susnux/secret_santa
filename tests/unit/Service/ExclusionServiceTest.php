@@ -9,9 +9,16 @@ declare(strict_types=1);
 
 namespace OCA\SecretSanta\Tests\Unit\Service;
 
+use InvalidArgumentException;
+use OCA\SecretSanta\Db\Draw;
+use OCA\SecretSanta\Db\DrawMapper;
 use OCA\SecretSanta\Db\Exclusion;
+use OCA\SecretSanta\Db\ExclusionMapper;
+use OCA\SecretSanta\Db\Pairing;
+use OCA\SecretSanta\Db\PairingMapper;
 use OCA\SecretSanta\Db\Participant;
 use OCA\SecretSanta\Db\SecretSantaList;
+use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\Service\ExclusionService;
 use OCA\SecretSanta\Service\ListService;
 use OCA\SecretSanta\Service\ParticipantService;
@@ -167,6 +174,124 @@ final class ExclusionServiceTest extends TestCase {
 		$this->listService->delete($this->list);
 
 		$this->assertSame([], $this->service->getExclusions($this->list));
+	}
+
+	/**
+	 * Store a draw of a list with the given partners
+	 *
+	 * @param array<string, string> $partners Name of the giver => name of the receiver
+	 */
+	private function storeDraw(SecretSantaList $list, array $partners): void {
+		$participants = [];
+		foreach ($this->participantService->getParticipants($list) as $participant) {
+			$participants[$participant->getDisplayName() ?? ''] = $participant->getId();
+		}
+		$draw = new Draw();
+		$draw->setListId($list->getId());
+		$draw->generateId();
+		$draw = Server::get(DrawMapper::class)->insert($draw);
+		foreach ($partners as $giver => $receiver) {
+			Server::get(PairingMapper::class)->insert($list, $draw, new Pairing($participants[$giver], $participants[$receiver]));
+		}
+	}
+
+	/**
+	 * @return list<string> The imported exclusions as `giver>receiver`, sorted
+	 */
+	private function getImported(): array {
+		return $this->format(Server::get(ExclusionMapper::class)->getExclusions($this->list, true));
+	}
+
+	/**
+	 * A list of last year with the participants of this list, erin, and carol with a differently written email address
+	 */
+	private function createLastYear(): SecretSantaList {
+		$lastYear = $this->listService->create(self::OWNER, 'Last year');
+		foreach (['alice', 'bob', 'Carol', 'dave', 'erin'] as $name) {
+			$this->participantService->addGuest($lastYear, strtolower($name), ' ' . $name . '@Example.com');
+		}
+		$this->storeDraw($lastYear, ['alice' => 'bob', 'bob' => 'carol', 'carol' => 'erin', 'dave' => 'alice', 'erin' => 'dave']);
+		return $lastYear;
+	}
+
+	public function testImportDrawExcludesThePartnersOfMatchedParticipants(): void {
+		$list = $this->service->importDraw($this->list, $this->createLastYear());
+
+		$this->assertTrue($list->getExclusionsImported());
+		$this->assertTrue($this->listService->get($this->list->getId(), self::OWNER)->getExclusionsImported());
+		$this->assertSame(['alice>bob', 'bob>carol', 'dave>alice'], $this->getImported());
+		$this->assertSame([], $this->service->getExclusions($this->list), 'Imported exclusions are never returned');
+	}
+
+	public function testImportAgainAddsTheNewParticipants(): void {
+		$lastYear = $this->createLastYear();
+		$this->service->importDraw($this->list, $lastYear);
+		$this->participants['erin'] = $this->participantService->addGuest($this->list, 'erin', 'erin@example.com');
+
+		$this->service->importDraw($this->list, $lastYear);
+
+		$this->assertSame(['alice>bob', 'bob>carol', 'carol>erin', 'dave>alice', 'erin>dave'], $this->getImported());
+	}
+
+	public function testImportDrawOfTheListItself(): void {
+		$this->storeDraw($this->list, ['alice' => 'bob', 'bob' => 'carol', 'carol' => 'dave', 'dave' => 'alice']);
+
+		$this->service->importDraw($this->list, $this->list);
+
+		$this->assertSame(['alice>bob', 'bob>carol', 'carol>dave', 'dave>alice'], $this->getImported());
+	}
+
+	public function testImportWithoutDrawIsRefused(): void {
+		$lastYear = $this->listService->create(self::OWNER, 'Last year');
+
+		try {
+			$this->service->importDraw($this->list, $lastYear);
+			$this->fail('Expected an exception');
+		} catch (InvalidInputException $error) {
+			$this->assertSame('The source list has no draw.', $error->getMessage());
+		}
+		$this->assertNotTrue($this->listService->get($this->list->getId(), self::OWNER)->getExclusionsImported());
+	}
+
+	public function testImportFromAnotherOwnerIsRefused(): void {
+		$other = $this->listService->create(self::OWNER . '-other', 'Other');
+		try {
+			$this->storeDraw($other, []);
+
+			$this->expectException(InvalidArgumentException::class);
+			$this->service->importDraw($this->list, $other);
+		} finally {
+			$this->listService->deleteByOwner(self::OWNER . '-other');
+		}
+	}
+
+	public function testExclusionsSetByHandLeaveImportedExclusionsAlone(): void {
+		$this->service->importDraw($this->list, $this->createLastYear());
+
+		// alice>bob is also imported, the mirrored exclusion is still set by hand
+		$this->assertSame(['alice>bob', 'bob>alice'], $this->set('bob', ['alice'], true));
+		$this->assertSame([], $this->set('bob', [], true));
+		$this->assertSame(['alice>bob', 'bob>carol', 'dave>alice'], $this->getImported());
+	}
+
+	public function testRemoveImported(): void {
+		$this->service->importDraw($this->list, $this->createLastYear());
+		$this->set('alice', ['bob'], false);
+
+		$list = $this->service->removeImported($this->list);
+
+		$this->assertFalse($list->getExclusionsImported());
+		$this->assertSame([], $this->getImported());
+		$this->assertSame(['alice>bob'], $this->format($this->service->getExclusions($this->list)));
+	}
+
+	public function testDeletingAParticipantDeletesTheirImportedExclusions(): void {
+		$this->service->importDraw($this->list, $this->createLastYear());
+
+		$this->participantService->delete($this->participants['bob']);
+		unset($this->participants['bob']);
+
+		$this->assertSame(['dave>alice'], $this->getImported());
 	}
 
 	public function testSerialize(): void {

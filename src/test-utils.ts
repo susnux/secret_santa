@@ -20,6 +20,7 @@ export function createTestList(values: Partial<ISecretSantaList> = {}): ISecretS
 		senderName: null,
 		mailSubject: 'Hi {name}',
 		mailBody: 'Hello {name}, you give {partner} a gift',
+		exclusionsImported: false,
 		...values,
 	}
 }

@@ -163,6 +163,7 @@ final class ListService {
 			'senderName' => $list->getSenderName(),
 			'mailSubject' => $list->getMailSubject(),
 			'mailBody' => $list->getMailBody(),
+			'exclusionsImported' => $list->getExclusionsImported() === true,
 		];
 	}
 

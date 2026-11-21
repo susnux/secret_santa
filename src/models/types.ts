@@ -11,6 +11,8 @@ export interface ISecretSantaList {
 	senderName: string | null
 	mailSubject: string
 	mailBody: string
+	/** Partners of draws were imported as exclusions, these exclusions are never sent to the browser */
+	exclusionsImported: boolean
 }
 
 /** A participant of a list, either a Nextcloud user or a guest */

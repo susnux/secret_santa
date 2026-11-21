@@ -10,11 +10,17 @@ import NcListItemIcon from '@nextcloud/vue/components/NcListItemIcon'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import ExclusionsDialog from './ExclusionsDialog.vue'
 import GuestDialog from './GuestDialog.vue'
+import ImportExclusionsDialog from './ImportExclusionsDialog.vue'
 import ParticipantsSection from './ParticipantsSection.vue'
-import { createOcsError, createTestGuest, createTestList } from '../test-utils.ts'
+import { clickButton, createOcsError, createTestGuest, createTestList } from '../test-utils.ts'
 
-const { addUser, removeParticipant, searchUsers } = vi.hoisted(() => ({ addUser: vi.fn(), removeParticipant: vi.fn(), searchUsers: vi.fn() }))
-vi.mock('../api/index.ts', () => ({ addUser, removeParticipant, searchUsers }))
+const { addUser, removeImportedExclusions, removeParticipant, searchUsers } = vi.hoisted(() => ({
+	addUser: vi.fn(),
+	removeImportedExclusions: vi.fn(),
+	removeParticipant: vi.fn(),
+	searchUsers: vi.fn(),
+}))
+vi.mock('../api/index.ts', () => ({ addUser, removeImportedExclusions, removeParticipant, searchUsers }))
 const { spawnDialog } = vi.hoisted(() => ({ spawnDialog: vi.fn() }))
 vi.mock('@nextcloud/vue/functions/dialog', () => ({ spawnDialog }))
 
@@ -22,15 +28,19 @@ const list = createTestList()
 const alice = createTestGuest('1', 'Alice')
 const bob = { id: '2', userId: 'bob', displayName: 'Bob & Co', email: null, hasEmail: false }
 const carol = createTestGuest('3', 'Carol')
+const lastYear = createTestList({ id: '11', name: 'Last year' })
 
 /**
  * Mount the section with alice, bob and carol, alice must not draw bob and carol
+ *
+ * @param currentList - The list shown in the section
  */
-function mountSection() {
+function mountSection(currentList = list) {
 	return mount(ParticipantsSection, {
 		attachTo: document.body,
 		props: {
-			list,
+			list: currentList,
+			lists: [currentList, lastYear],
 			participants: [alice, bob, carol],
 			exclusions: [{ giverId: '1', receiverId: '2' }, { giverId: '1', receiverId: '3' }],
 		},
@@ -69,6 +79,7 @@ describe('ParticipantsSection', () => {
 	beforeEach(() => {
 		vi.useFakeTimers()
 		addUser.mockReset()
+		removeImportedExclusions.mockReset()
 		removeParticipant.mockReset()
 		searchUsers.mockReset()
 		spawnDialog.mockReset()
@@ -169,5 +180,39 @@ describe('ParticipantsSection', () => {
 
 		expect(removeParticipant).toHaveBeenCalledWith(list.id, '2')
 		expect(wrapper.emitted('changed')).toHaveLength(1)
+	})
+
+	it('imports exclusions', async () => {
+		const updated = createTestList({ exclusionsImported: true })
+		spawnDialog.mockResolvedValue(updated)
+		const wrapper = mountSection()
+		expect(wrapper.text()).not.toContain('Exclusions were imported')
+
+		await clickButton('Import exclusions')
+
+		expect(spawnDialog).toHaveBeenCalledWith(ImportExclusionsDialog, { list, lists: [list, lastYear] })
+		expect(wrapper.emitted('update:list')).toEqual([[updated]])
+	})
+
+	it('removes the imported exclusions', async () => {
+		const updated = createTestList()
+		removeImportedExclusions.mockResolvedValue(updated)
+		const wrapper = mountSection(createTestList({ exclusionsImported: true }))
+		expect(wrapper.text()).toContain('Exclusions were imported from earlier draws')
+
+		await clickButton('Remove imported exclusions')
+
+		expect(removeImportedExclusions).toHaveBeenCalledWith(list.id)
+		expect(wrapper.emitted('update:list')).toEqual([[updated]])
+	})
+
+	it('shows why the imported exclusions could not be removed', async () => {
+		removeImportedExclusions.mockRejectedValue(createOcsError(404, 'Not found'))
+		const wrapper = mountSection(createTestList({ exclusionsImported: true }))
+
+		await clickButton('Remove imported exclusions')
+
+		expect(wrapper.text()).toContain('Not found')
+		expect(wrapper.emitted('update:list')).toBeUndefined()
 	})
 })
