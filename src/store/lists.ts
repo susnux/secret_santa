@@ -6,7 +6,7 @@
 import type { ISecretSantaList } from '../models/types.ts'
 
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { fetchLists } from '../api/index.ts'
 import logger from '../utils/logger.ts'
 
@@ -14,6 +14,12 @@ export const useListsStore = defineStore('secret_santa-lists', () => {
 	const lists = ref<ISecretSantaList[]>([])
 	const loaded = ref(false)
 	const failed = ref(false)
+
+	const activeLists = computed(() => lists.value.filter(({ archivedAt }) => archivedAt === null))
+	/** The archived lists, the latest archived first */
+	const archivedLists = computed(() => lists.value
+		.filter(({ archivedAt }) => archivedAt !== null)
+		.sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0)))
 
 	/**
 	 * Load the lists of the current user
@@ -57,6 +63,8 @@ export const useListsStore = defineStore('secret_santa-lists', () => {
 
 	return {
 		lists,
+		activeLists,
+		archivedLists,
 		loaded,
 		failed,
 		ready,

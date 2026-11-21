@@ -12,9 +12,11 @@ namespace OCA\SecretSanta\Controller;
 use OCA\SecretSanta\AppInfo\Application;
 use OCA\SecretSanta\Db\Participant;
 use OCA\SecretSanta\Db\SecretSantaList as SecretSantaListEntity;
+use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\Service\ListService;
 use OCA\SecretSanta\Service\ParticipantService;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\OCS\OCSBadRequestException;
 use OCP\AppFramework\OCS\OCSNotFoundException;
 use OCP\AppFramework\OCSController;
 use OCP\IRequest;
@@ -45,6 +47,22 @@ abstract class BaseOCSController extends OCSController {
 		} catch (DoesNotExistException) {
 			throw new OCSNotFoundException();
 		}
+	}
+
+	/**
+	 * Find a list of the current user to change it
+	 *
+	 * @throws OCSNotFoundException If the list does not exist or is not owned by the current user
+	 * @throws OCSBadRequestException If the list is archived
+	 */
+	protected function findEditableList(string $listId): SecretSantaListEntity {
+		$list = $this->findList($listId);
+		try {
+			$this->listService->checkEditable($list);
+		} catch (InvalidInputException $error) {
+			throw new OCSBadRequestException($error->getHint());
+		}
+		return $list;
 	}
 
 	/**

@@ -66,6 +66,24 @@ export async function deleteList(listId: string): Promise<void> {
 }
 
 /**
+ * Archive a list, it can not be changed until it is unarchived
+ *
+ * @param listId - The id of the list
+ */
+export function archiveList(listId: string): Promise<ISecretSantaList> {
+	return ocsData(axios.post(apiUrl('lists/{listId}/archive', { listId })))
+}
+
+/**
+ * Unarchive a list
+ *
+ * @param listId - The id of the list
+ */
+export function unarchiveList(listId: string): Promise<ISecretSantaList> {
+	return ocsData(axios.delete(apiUrl('lists/{listId}/archive', { listId })))
+}
+
+/**
  * Get the participants of a list
  *
  * @param listId - The id of the list

@@ -30,6 +30,8 @@ use OCP\DB\Types;
  * @method void setMailBody(string $value)
  * @method ?bool getExclusionsImported()
  * @method void setExclusionsImported(bool $value)
+ * @method ?int getArchivedAt()
+ * @method void setArchivedAt(?int $value)
  */
 final class SecretSantaList extends SnowflakeAwareEntity {
 
@@ -66,6 +68,12 @@ final class SecretSantaList extends SnowflakeAwareEntity {
 	 */
 	protected $exclusionsImported;
 
+	/**
+	 * Unix timestamp of archiving the list, null if it is not archived. Archived lists can not be changed.
+	 * @var ?int
+	 */
+	protected $archivedAt;
+
 	public function __construct() {
 		$this->addType('owner', Types::STRING);
 		$this->addType('name', Types::STRING);
@@ -73,6 +81,7 @@ final class SecretSantaList extends SnowflakeAwareEntity {
 		$this->addType('mailSubject', Types::STRING);
 		$this->addType('mailBody', Types::STRING);
 		$this->addType('exclusionsImported', Types::BOOLEAN);
+		$this->addType('archivedAt', Types::BIGINT);
 	}
 
 }

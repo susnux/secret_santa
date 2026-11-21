@@ -20,6 +20,7 @@ use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\ResponseDefinitions;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\TTransactional;
+use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IDBConnection;
 use OCP\IL10N;
 
@@ -43,6 +44,7 @@ final class ListService {
 		private ExclusionMapper $exclusionMapper,
 		private DrawMapper $drawMapper,
 		private PairingMapper $pairingMapper,
+		private ITimeFactory $timeFactory,
 	) {
 	}
 
@@ -57,6 +59,17 @@ final class ListService {
 			throw new DoesNotExistException('List not found');
 		}
 		return $list;
+	}
+
+	/**
+	 * Check that a list can be changed.
+	 *
+	 * @throws InvalidInputException If the list is archived
+	 */
+	public function checkEditable(SecretSantaList $list): void {
+		if ($list->getArchivedAt() !== null) {
+			throw new InvalidInputException('The list is archived.', $this->l10n->t('The list is archived. Unarchive it to change it.'));
+		}
 	}
 
 	/**
@@ -132,6 +145,21 @@ final class ListService {
 	}
 
 	/**
+	 * Archive a list, archived lists can not be changed until they are unarchived.
+	 */
+	public function archive(SecretSantaList $list): SecretSantaList {
+		if ($list->getArchivedAt() === null) {
+			$list->setArchivedAt($this->timeFactory->getTime());
+		}
+		return $this->listMapper->update($list);
+	}
+
+	public function unarchive(SecretSantaList $list): SecretSantaList {
+		$list->setArchivedAt(null);
+		return $this->listMapper->update($list);
+	}
+
+	/**
 	 * Delete a list including its participants, exclusions and draws.
 	 */
 	public function delete(SecretSantaList $list): void {
@@ -164,6 +192,7 @@ final class ListService {
 			'mailSubject' => $list->getMailSubject(),
 			'mailBody' => $list->getMailBody(),
 			'exclusionsImported' => $list->getExclusionsImported() === true,
+			'archivedAt' => $list->getArchivedAt(),
 		];
 	}
 

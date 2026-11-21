@@ -52,7 +52,7 @@ final class ParticipantController extends BaseOCSController {
 	 * @param ?string $displayName The name of the guest to add (up to 255 characters)
 	 * @param ?string $email The email address of the guest to add (up to 255 characters)
 	 * @return DataResponse<Http::STATUS_CREATED, SecretSantaParticipant, array{}>
-	 * @throws OCSBadRequestException Unknown user, invalid values, already a participant or too many participants
+	 * @throws OCSBadRequestException Unknown user, invalid values, already a participant, too many participants or the list is archived
 	 * @throws OCSNotFoundException List not found or not owned by the current user
 	 *
 	 * 201: Participant added
@@ -60,7 +60,7 @@ final class ParticipantController extends BaseOCSController {
 	#[NoAdminRequired]
 	#[ApiRoute(verb: 'POST', url: '/api/v1/lists/{listId}/participants', requirements: ['listId' => '\d+'])]
 	public function addParticipant(string $listId, ?string $userId = null, ?string $displayName = null, ?string $email = null): DataResponse {
-		$list = $this->findList($listId);
+		$list = $this->findEditableList($listId);
 		try {
 			if ($userId !== null) {
 				$participant = $this->participantService->addUser($list, $userId);
@@ -85,7 +85,7 @@ final class ParticipantController extends BaseOCSController {
 	 * @param string $displayName The name of the guest (up to 255 characters)
 	 * @param string $email The email address of the guest (up to 255 characters)
 	 * @return DataResponse<Http::STATUS_OK, SecretSantaParticipant, array{}>
-	 * @throws OCSBadRequestException Invalid values or the participant is a Nextcloud user
+	 * @throws OCSBadRequestException Invalid values, the participant is a Nextcloud user or the list is archived
 	 * @throws OCSNotFoundException List or participant not found or the list is not owned by the current user
 	 *
 	 * 200: Participant changed
@@ -93,7 +93,7 @@ final class ParticipantController extends BaseOCSController {
 	#[NoAdminRequired]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/lists/{listId}/participants/{participantId}', requirements: ['listId' => '\d+', 'participantId' => '\d+'])]
 	public function updateParticipant(string $listId, string $participantId, string $displayName, string $email): DataResponse {
-		$list = $this->findList($listId);
+		$list = $this->findEditableList($listId);
 		$participant = $this->findParticipant($list, $participantId);
 		try {
 			$participant = $this->participantService->updateGuest($list, $participant, $displayName, $email);
@@ -111,6 +111,7 @@ final class ParticipantController extends BaseOCSController {
 	 * @param string $listId The id of the list
 	 * @param string $participantId The id of the participant
 	 * @return DataResponse<Http::STATUS_OK, null, array{}>
+	 * @throws OCSBadRequestException The list is archived
 	 * @throws OCSNotFoundException List or participant not found or the list is not owned by the current user
 	 *
 	 * 200: Participant removed
@@ -118,7 +119,7 @@ final class ParticipantController extends BaseOCSController {
 	#[NoAdminRequired]
 	#[ApiRoute(verb: 'DELETE', url: '/api/v1/lists/{listId}/participants/{participantId}', requirements: ['listId' => '\d+', 'participantId' => '\d+'])]
 	public function deleteParticipant(string $listId, string $participantId): DataResponse {
-		$list = $this->findList($listId);
+		$list = $this->findEditableList($listId);
 		$this->participantService->delete($this->findParticipant($list, $participantId));
 		return new DataResponse(null);
 	}

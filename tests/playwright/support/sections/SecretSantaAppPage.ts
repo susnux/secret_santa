@@ -73,6 +73,19 @@ export class SecretSantaAppPage {
 		return this.navigation().getByRole('listitem').filter({ has: this.page.getByRole('link', { name, exact: true }) })
 	}
 
+	archivedListsNavigationItem(): Locator {
+		return this.navigation().getByRole('listitem').filter({ has: this.page.getByRole('link', { name: 'Archived lists' }) })
+	}
+
+	/**
+	 * The entry of a list on the page of the archived lists
+	 *
+	 * @param name - The name of the list
+	 */
+	archivedList(name: string): Locator {
+		return this.page.getByRole('list', { name: 'Archived lists' }).getByRole('listitem').filter({ has: this.page.getByRole('link', { name }) })
+	}
+
 	listHeading(): Locator {
 		return this.page.getByRole('main').getByRole('heading', { level: 2 })
 	}
@@ -125,9 +138,20 @@ export class SecretSantaAppPage {
 	 * @param list - The name of the list
 	 * @param action - The name of the action
 	 */
-	async clickListAction(list: string, action: 'Rename' | 'Delete'): Promise<void> {
+	async clickListAction(list: string, action: 'Rename' | 'Archive' | 'Delete'): Promise<void> {
 		await this.listNavigationItem(list).hover()
 		await this.listNavigationItem(list).getByRole('button', { name: 'Actions' }).click()
+		await this.page.getByRole('menuitem', { name: action }).click()
+	}
+
+	/**
+	 * Open the actions menu of a list on the page of the archived lists and click an action
+	 *
+	 * @param list - The name of the list
+	 * @param action - The name of the action
+	 */
+	async clickArchivedListAction(list: string, action: 'Unarchive' | 'Delete'): Promise<void> {
+		await this.archivedList(list).getByRole('button', { name: 'Actions' }).click()
 		await this.page.getByRole('menuitem', { name: action }).click()
 	}
 
@@ -184,5 +208,7 @@ export class SecretSantaAppPage {
 	async draw(): Promise<void> {
 		await this.section('Draw').getByRole('button', { name: 'Draw partners and send emails' }).click()
 		await this.dialog('Draw the partners?').getByRole('button', { name: 'Draw and send emails' }).click()
+		// NcDialog is hidden at once but only closed after its transition, until then it can not be opened again
+		await this.page.locator('.dialog__modal').waitFor({ state: 'detached' })
 	}
 }

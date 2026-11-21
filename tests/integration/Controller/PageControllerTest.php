@@ -19,6 +19,7 @@ final class PageControllerTest extends IntegrationTestCase {
 			'start page' => [''],
 			'list' => ['154562972200341504'],
 			'not found' => ['not-found'],
+			'archived lists' => ['archived'],
 		];
 	}
 

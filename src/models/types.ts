@@ -13,6 +13,8 @@ export interface ISecretSantaList {
 	mailBody: string
 	/** Partners of draws were imported as exclusions, these exclusions are never sent to the browser */
 	exclusionsImported: boolean
+	/** Unix timestamp of archiving the list, null if it is not archived. Archived lists can not be changed. */
+	archivedAt: number | null
 }
 
 /** A participant of a list, either a Nextcloud user or a guest */

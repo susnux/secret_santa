@@ -6,16 +6,19 @@
 <script setup lang="ts">
 import type { ISecretSantaList } from '../models/types.ts'
 
-import { mdiAlertCircleOutline, mdiGiftOutline, mdiPencil, mdiPlus, mdiTrashCan } from '@mdi/js'
+import { mdiAlertCircleOutline, mdiArchiveOutline, mdiGiftOutline, mdiPencil, mdiPlus, mdiTrashCan } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
 import { spawnDialog } from '@nextcloud/vue/functions/dialog'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
 import NcAppNavigation from '@nextcloud/vue/components/NcAppNavigation'
 import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'
 import NcAppNavigationList from '@nextcloud/vue/components/NcAppNavigationList'
 import NcAppNavigationNew from '@nextcloud/vue/components/NcAppNavigationNew'
+import NcCounterBubble from '@nextcloud/vue/components/NcCounterBubble'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
+import ArchiveListDialog from '../components/ArchiveListDialog.vue'
 import DeleteListDialog from '../components/DeleteListDialog.vue'
 import ListDialog from '../components/ListDialog.vue'
 import { useListsStore } from '../store/lists.ts'
@@ -23,6 +26,8 @@ import { useListsStore } from '../store/lists.ts'
 const store = useListsStore()
 const route = useRoute()
 const router = useRouter()
+
+const archivedListOpen = computed(() => store.archivedLists.some(({ id }) => id === route.params.listId))
 
 /**
  * Show the dialog to create a new list and open the created list
@@ -44,6 +49,18 @@ async function rename(list: ISecretSantaList) {
 	const updated = await spawnDialog(ListDialog, { list })
 	if (updated) {
 		store.setList(updated)
+	}
+}
+
+/**
+ * Ask for confirmation, then archive the list. An open list stays open, as it can still be viewed.
+ *
+ * @param list - The list to archive
+ */
+async function archive(list: ISecretSantaList) {
+	const archived = await spawnDialog(ArchiveListDialog, { list })
+	if (archived) {
+		store.setList(archived)
 	}
 }
 
@@ -79,7 +96,7 @@ async function remove(list: ISecretSantaList) {
 				</template>
 			</NcAppNavigationItem>
 			<NcAppNavigationItem
-				v-for="list in store.lists"
+				v-for="list in store.activeLists"
 				:key="list.id"
 				:name="list.name"
 				:to="{ name: 'list', params: { listId: list.id } }">
@@ -93,6 +110,12 @@ async function remove(list: ISecretSantaList) {
 						</template>
 						{{ t('secret_santa', 'Rename') }}
 					</NcActionButton>
+					<NcActionButton closeAfterClick @click="archive(list)">
+						<template #icon>
+							<NcIconSvgWrapper :path="mdiArchiveOutline" />
+						</template>
+						{{ t('secret_santa', 'Archive') }}
+					</NcActionButton>
 					<NcActionButton closeAfterClick @click="remove(list)">
 						<template #icon>
 							<NcIconSvgWrapper :path="mdiTrashCan" />
@@ -102,5 +125,20 @@ async function remove(list: ISecretSantaList) {
 				</template>
 			</NcAppNavigationItem>
 		</NcAppNavigationList>
+		<template #footer>
+			<NcAppNavigationList>
+				<NcAppNavigationItem
+					:name="t('secret_santa', 'Archived lists')"
+					:to="{ name: 'archived' }"
+					:active="archivedListOpen">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiArchiveOutline" />
+					</template>
+					<template v-if="store.archivedLists.length > 0" #counter>
+						<NcCounterBubble :count="store.archivedLists.length" />
+					</template>
+				</NcAppNavigationItem>
+			</NcAppNavigationList>
+		</template>
 	</NcAppNavigation>
 </template>

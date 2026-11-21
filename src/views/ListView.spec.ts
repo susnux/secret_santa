@@ -14,10 +14,11 @@ const api = vi.hoisted(() => ({
 	fetchParticipants: vi.fn(),
 	fetchExclusions: vi.fn(),
 	fetchDraws: vi.fn(),
+	unarchiveList: vi.fn(),
 }))
 vi.mock('../api/index.ts', () => api)
 const { replace } = vi.hoisted(() => ({ replace: vi.fn() }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ replace }) }))
+vi.mock('vue-router', async (importOriginal) => ({ ...await importOriginal<Record<string, unknown>>(), useRouter: () => ({ replace }) }))
 
 const list = createTestList({ id: '10', name: 'Christmas' })
 
@@ -99,6 +100,33 @@ describe('ListView', () => {
 		const wrapper = await mountView('10')
 
 		expect(wrapper.text()).toContain('Could not load the list.')
+	})
+
+	it('shows that an archived list can not be changed and unarchives it', async () => {
+		api.fetchLists.mockResolvedValue([{ ...list, archivedAt: 1_766_000_000 }])
+		api.unarchiveList.mockResolvedValue(list)
+		const wrapper = await mountView('10')
+
+		expect(wrapper.text()).toContain('This list is archived and can not be changed.')
+		const button = wrapper.findAll('button').find((element) => element.text() === 'Unarchive')!
+		await button.trigger('click')
+		await flushPromises()
+
+		expect(api.unarchiveList).toHaveBeenCalledWith('10')
+		expect(wrapper.text()).not.toContain('This list is archived')
+		expect(wrapper.findComponent({ name: 'ParticipantsSection' }).props('list')).toEqual(list)
+	})
+
+	it('shows why an archived list could not be unarchived', async () => {
+		api.fetchLists.mockResolvedValue([{ ...list, archivedAt: 1_766_000_000 }])
+		api.unarchiveList.mockRejectedValue(createOcsError(500))
+		const wrapper = await mountView('10')
+
+		await wrapper.findAll('button').find((element) => element.text() === 'Unarchive')!.trigger('click')
+		await flushPromises()
+
+		expect(wrapper.text()).toContain('Could not unarchive the list.')
+		expect(wrapper.text()).toContain('This list is archived')
 	})
 
 	it('shows an error if the list could not be loaded', async () => {

@@ -42,6 +42,16 @@ final class PageController extends Controller {
 	}
 
 	/**
+	 * Page with the archived lists
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[FrontpageRoute(verb: 'GET', url: '/archived')]
+	public function archived(): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
 	 * Page of a list, the frontend loads the list and shows "not found" if it is not accessible
 	 */
 	#[NoAdminRequired]

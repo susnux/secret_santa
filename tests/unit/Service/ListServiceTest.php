@@ -18,6 +18,7 @@ use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\Service\ListService;
 use OCA\SecretSanta\Service\ParticipantService;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IDBConnection;
 use OCP\IL10N;
 use OCP\Server;
@@ -27,6 +28,7 @@ final class ListServiceTest extends TestCase {
 
 	private const string USER_ID = 'secret-santa-list-service-test';
 	private const string OTHER_USER_ID = 'secret-santa-list-service-test-other';
+	private const int NOW = 1_800_000_000;
 
 	private ListService $service;
 	private ParticipantMapper $participantMapper;
@@ -37,6 +39,8 @@ final class ListServiceTest extends TestCase {
 		$l10n = $this->createStub(IL10N::class);
 		$l10n->method('t')->willReturnCallback(static fn (string $text, array $parameters = []): string => 'translated: ' . vsprintf($text, $parameters));
 		$this->participantMapper = Server::get(ParticipantMapper::class);
+		$timeFactory = $this->createStub(ITimeFactory::class);
+		$timeFactory->method('getTime')->willReturn(self::NOW);
 		$this->service = new ListService(
 			Server::get(IDBConnection::class),
 			$l10n,
@@ -45,6 +49,7 @@ final class ListServiceTest extends TestCase {
 			Server::get(ExclusionMapper::class),
 			Server::get(DrawMapper::class),
 			Server::get(PairingMapper::class),
+			$timeFactory,
 		);
 	}
 
@@ -164,6 +169,42 @@ final class ListServiceTest extends TestCase {
 		$this->service->update($list, mailBody: str_repeat('a', 10_001));
 	}
 
+	public function testArchiveAndUnarchive(): void {
+		$list = $this->service->create(self::USER_ID, 'Christmas');
+		$this->assertNull($list->getArchivedAt());
+
+		$this->service->archive($list);
+		$archived = $this->service->get($list->getId(), self::USER_ID);
+		$this->assertSame(self::NOW, $archived->getArchivedAt());
+
+		$this->service->unarchive($archived);
+		$this->assertNull($this->service->get($list->getId(), self::USER_ID)->getArchivedAt());
+	}
+
+	public function testArchiveKeepsTheTimeOfArchiving(): void {
+		$list = $this->service->create(self::USER_ID, 'Christmas');
+		$list->setArchivedAt(self::NOW - 100);
+		$this->service->archive($list);
+
+		$this->service->archive($list);
+
+		$this->assertSame(self::NOW - 100, $this->service->get($list->getId(), self::USER_ID)->getArchivedAt());
+	}
+
+	public function testCheckEditable(): void {
+		$list = $this->service->create(self::USER_ID, 'Christmas');
+		$this->service->checkEditable($list);
+
+		$this->service->archive($list);
+		try {
+			$this->service->checkEditable($list);
+			$this->fail('Expected an exception');
+		} catch (InvalidInputException $error) {
+			$this->assertSame('The list is archived.', $error->getMessage());
+			$this->assertSame('translated: The list is archived. Unarchive it to change it.', $error->getHint());
+		}
+	}
+
 	public function testDeleteRemovesParticipants(): void {
 		$list = $this->service->create(self::USER_ID, 'Christmas');
 		$other = $this->service->create(self::USER_ID, 'Other');
@@ -188,6 +229,10 @@ final class ListServiceTest extends TestCase {
 			'mailSubject' => $list->getMailSubject(),
 			'mailBody' => $list->getMailBody(),
 			'exclusionsImported' => false,
+			'archivedAt' => null,
 		], $this->service->serialize($list));
+
+		$this->service->archive($list);
+		$this->assertSame(self::NOW, $this->service->serialize($list)['archivedAt']);
 	}
 }

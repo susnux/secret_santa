@@ -158,6 +158,24 @@ describe('DrawSection', () => {
 		expect(findDrawButton(wrapper).props('disabled')).toBe(false)
 	})
 
+	it('only shows the draws of archived lists', async () => {
+		const wrapper = mount(DrawSection, {
+			attachTo: document.body,
+			props: {
+				list: { ...list, archivedAt: drawnAt + 30 },
+				participants: participants.slice(0, 1),
+				draws: [{ ...createTestDraw('21', ['2']), outdated: true }, createTestDraw('20')],
+			},
+		})
+		await flushPromises()
+
+		expect(wrapper.findAllComponents(NcButton)).toHaveLength(0)
+		expect(wrapper.text()).not.toContain('At least 3 participants are needed')
+		expect(wrapper.text()).not.toContain('Draw the partners again')
+		expect(wrapper.findAll('[data-participant]')).toHaveLength(3)
+		expect(wrapper.text()).toContain('Previous draws')
+	})
+
 	it('shows why an email could not be sent again', async () => {
 		notifyParticipant.mockRejectedValue(createOcsError(503, '', { message: 'The email could not be sent.' }))
 		const wrapper = await mountSection({ draws: [createTestDraw('21', ['2'])] })
