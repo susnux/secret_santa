@@ -18,9 +18,13 @@
 ]]></description>
 	<version>0.0.3</version>
 	<licence>AGPL-3.0-or-later</licence>
-	<author mail="opensource@fthiessen.de">Ferdinand Thiessen</author>
+	<author mail="opensource@fthiessen.de" homepage="https://github.com/susnux/secret_santa">Ferdinand Thiessen</author>
 	<namespace>SecretSanta</namespace>
 	<category>organization</category>
+	<website>https://github.com/susnux/secret_santa</website>
+	<bugs>https://github.com/susnux/secret_santa/issues</bugs>
+	<repository type="git">https://github.com/susnux/secret_santa.git</repository>
+	<screenshot>https://raw.githubusercontent.com/susnux/secret_santa/main/img/screenshot.png</screenshot>
 	<dependencies>
 		<php min-version="8.3" />
 		<nextcloud min-version="35" max-version="36"/>

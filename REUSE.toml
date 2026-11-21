@@ -22,3 +22,9 @@ path = ["l10n/**", "translationfiles/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Ferdinand Thiessen <opensource@fthiessen.de>"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
+path = ["img/screenshot.png"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Ferdinand Thiessen <opensource@fthiessen.de>"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
