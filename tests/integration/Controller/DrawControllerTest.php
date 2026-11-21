@@ -125,9 +125,12 @@ final class DrawControllerTest extends IntegrationTestCase {
 		$this->assertNotSame('dave', $first['carol']);
 		$this->assertNotSame('carol', $first['dave']);
 
+		$this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $this->listId . '/exclusions/import', [
+			RequestOptions::JSON => ['sourceListId' => $this->listId],
+		]));
 		$this->draw();
 		foreach ($this->getSentPartners() as $giver => $receiver) {
-			$this->assertNotSame($first[$giver], $receiver, 'Nobody draws their partner of the previous draw');
+			$this->assertNotSame($first[$giver], $receiver, 'Nobody draws their partner of the imported draw');
 		}
 	}
 
@@ -167,10 +170,12 @@ final class DrawControllerTest extends IntegrationTestCase {
 
 	public function testDrawIsRefusedIfItIsTheOnlyValidDraw(): void {
 		$this->addGuests(['carol', 'dave', 'erin']);
-		$draw = $this->draw();
+		$this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'PUT', 'api/v1/lists/' . $this->listId . '/participants/' . $this->participants['carol'] . '/exclusions', [
+			RequestOptions::JSON => ['receiverIds' => [$this->participants['dave']], 'mutual' => false],
+		]));
 
 		$this->assertOcsResponse(400, $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $this->listId . '/draws'));
-		$this->assertSame([$draw], $this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'GET', 'api/v1/lists/' . $this->listId . '/draws')));
+		$this->assertSame([], $this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'GET', 'api/v1/lists/' . $this->listId . '/draws')));
 	}
 
 	public function testRemovingAParticipantMarksTheDrawOutdated(): void {

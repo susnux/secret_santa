@@ -10,8 +10,8 @@ Organize a Secret Santa gift exchange ("Wichteln") in Nextcloud.
 - Create lists of participants, both Nextcloud users and guests by name and email
 - Write the email every participant receives
 - Draw the partners and notify every participant by email whom to give a gift
-- Nobody draws the same partner as in the previous draw
 - Exclude partners, e.g. couples, from drawing each other
+- Import the partners of an earlier draw, so nobody draws the same partner again
 
 Emails are sent through the mail server configured in the Nextcloud administration settings.
 Every user who can use the app can send emails with their own text to the participants, including guests.

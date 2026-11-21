@@ -137,4 +137,81 @@ final class ExclusionControllerTest extends IntegrationTestCase {
 			RequestOptions::JSON => ['receiverIds' => []],
 		]));
 	}
+
+	private function createList(string $userId, string $name): string {
+		$list = $this->assertOcsResponse(201, $this->ocsRequest($userId, 'POST', 'api/v1/lists', [
+			RequestOptions::JSON => ['name' => $name],
+		]));
+		$this->assertIsArray($list);
+		return $list['id'];
+	}
+
+	private function importExclusions(string $userId, string $listId, string $sourceListId): mixed {
+		return $this->ocsRequest($userId, 'POST', 'api/v1/lists/' . $listId . '/exclusions/import', [
+			RequestOptions::JSON => ['sourceListId' => $sourceListId],
+		]);
+	}
+
+	private function drawResponse(): mixed {
+		return $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $this->listId . '/draws');
+	}
+
+	public function testImportExclusions(): void {
+		// Sending the emails may fail without a mail server, the draw is stored anyway
+		$this->assertOcsResponse(201, $this->drawResponse());
+
+		$list = $this->assertOcsResponse(200, $this->importExclusions($this->alice, $this->listId, $this->listId));
+
+		$this->assertIsArray($list);
+		$this->assertSame($this->listId, $list['id']);
+		$this->assertTrue($list['exclusionsImported']);
+		$this->assertTrue($this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'GET', 'api/v1/lists/' . $this->listId))['exclusionsImported']);
+		$this->assertSame([], $this->getExclusions(), 'Imported exclusions are never returned');
+		// Three participants who must not draw their partner again have only one possible draw left
+		$this->assertOcsResponse(400, $this->drawResponse());
+	}
+
+	public function testRemoveImportedExclusions(): void {
+		$this->assertOcsResponse(201, $this->drawResponse());
+		$this->assertOcsResponse(200, $this->importExclusions($this->alice, $this->listId, $this->listId));
+
+		$list = $this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'DELETE', 'api/v1/lists/' . $this->listId . '/exclusions/imported'));
+
+		$this->assertIsArray($list);
+		$this->assertFalse($list['exclusionsImported']);
+		$this->assertOcsResponse(201, $this->drawResponse());
+	}
+
+	public function testImportFromAnotherList(): void {
+		$lastYear = $this->createList($this->alice, 'Last year');
+		foreach (['carol', 'dave', 'erin'] as $name) {
+			$this->assertOcsResponse(201, $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $lastYear . '/participants', [
+				RequestOptions::JSON => ['displayName' => ucfirst($name), 'email' => strtoupper($name) . '@example.com'],
+			]));
+		}
+		$this->assertOcsResponse(201, $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $lastYear . '/draws'));
+
+		$this->assertOcsResponse(200, $this->importExclusions($this->alice, $this->listId, $lastYear));
+
+		$this->assertOcsResponse(400, $this->drawResponse());
+	}
+
+	public function testImportWithoutDraw(): void {
+		$lastYear = $this->createList($this->alice, 'Last year');
+
+		$this->assertOcsResponse(400, $this->importExclusions($this->alice, $this->listId, $lastYear));
+		$this->assertFalse($this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'GET', 'api/v1/lists/' . $this->listId))['exclusionsImported']);
+	}
+
+	public function testImportOfOtherUsersIsNotFound(): void {
+		$bob = $this->createUser();
+		$bobsList = $this->createList($bob, 'Bob');
+		$this->assertOcsResponse(201, $this->drawResponse());
+
+		$this->assertOcsResponse(404, $this->importExclusions($this->alice, $this->listId, $bobsList));
+		$this->assertOcsResponse(404, $this->importExclusions($bob, $bobsList, $this->listId));
+		$this->assertOcsResponse(404, $this->importExclusions($bob, $this->listId, $this->listId));
+		$this->assertOcsResponse(404, $this->ocsRequest($bob, 'DELETE', 'api/v1/lists/' . $this->listId . '/exclusions/imported'));
+		$this->assertOcsResponse(404, $this->importExclusions($this->alice, $this->listId, 'invalid'));
+	}
 }

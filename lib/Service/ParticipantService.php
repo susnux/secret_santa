@@ -195,6 +195,62 @@ final class ParticipantService {
 	}
 
 	/**
+	 * Find the participants of another list that are the same people.
+	 *
+	 * Nextcloud users are matched by their account, everybody else by their email address.
+	 * Participants that match several participants, or whose match is matched by several participants, are left out.
+	 *
+	 * @param list<Participant> $participants
+	 * @param list<Participant> $others The participants of the other list
+	 * @return array<string, string> The id of a participant => the id of the same person in the other list
+	 */
+	public function matchParticipants(array $participants, array $others): array {
+		$byUser = [];
+		$byEmail = [];
+		foreach ($others as $other) {
+			$userId = $other->getUserId();
+			if ($userId !== null) {
+				$byUser[$userId][] = $other->getId();
+			}
+			$email = $this->getEmail($other);
+			if ($email !== '') {
+				$byEmail[self::normalizeEmail($email)][] = $other->getId();
+			}
+		}
+
+		$matches = [];
+		$matchCount = [];
+		foreach ($participants as $participant) {
+			$userId = $participant->getUserId();
+			$candidates = $userId === null ? [] : ($byUser[$userId] ?? []);
+			if ($candidates === []) {
+				$email = $this->getEmail($participant);
+				$candidates = $email === '' ? [] : ($byEmail[self::normalizeEmail($email)] ?? []);
+			}
+			if (count($candidates) === 1) {
+				$matches[$participant->getId()] = $candidates[0];
+				$matchCount[$candidates[0]] = ($matchCount[$candidates[0]] ?? 0) + 1;
+			}
+		}
+		return array_filter($matches, static fn (string $otherId): bool => $matchCount[$otherId] === 1);
+	}
+
+	/**
+	 * The email address of a guest or of the account of a user, an empty string if there is none
+	 */
+	private function getEmail(Participant $participant): string {
+		$userId = $participant->getUserId();
+		if ($userId === null) {
+			return $participant->getEmail() ?? '';
+		}
+		return $this->userManager->get($userId)?->getEMailAddress() ?? '';
+	}
+
+	private static function normalizeEmail(string $email): string {
+		return mb_strtolower(trim($email));
+	}
+
+	/**
 	 * Check if the owner of a list is allowed to add the user, following the sharing restrictions.
 	 */
 	private function canAddUser(string $ownerId, IUser $user): bool {
@@ -247,7 +303,7 @@ final class ParticipantService {
 		}
 		foreach ($participants as $other) {
 			$otherEmail = $other->getEmail();
-			if ($otherEmail !== null && $other->getId() !== $participant->getId() && mb_strtolower($otherEmail) === mb_strtolower($email)) {
+			if ($otherEmail !== null && $other->getId() !== $participant->getId() && self::normalizeEmail($otherEmail) === self::normalizeEmail($email)) {
 				throw new InvalidInputException('The email address is already used.', $this->l10n->t('Another participant already uses this email address.'));
 			}
 		}

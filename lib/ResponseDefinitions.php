@@ -14,6 +14,8 @@ namespace OCA\SecretSanta;
  * `senderName` is the display name of the sender of the emails, the display name of the owner is used if it is null.
  * `mailSubject` and `mailBody` are the email sent to every participant, `{name}` is replaced by the name of the
  * participant and, only in `mailBody`, `{partner}` by the name of the participant to give a gift to.
+ * `exclusionsImported` is set if the partners of draws were imported as exclusions. These exclusions are only
+ * used for drawing and never returned, as they would reveal the partners of those draws.
  *
  * @psalm-type SecretSantaList = array{
  *     id: string,
@@ -21,6 +23,7 @@ namespace OCA\SecretSanta;
  *     senderName: ?string,
  *     mailSubject: string,
  *     mailBody: string,
+ *     exclusionsImported: bool,
  * }
  *
  * `userId` is set for Nextcloud users and null for guests.

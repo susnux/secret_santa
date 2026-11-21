@@ -167,6 +167,18 @@ export class SecretSantaAppPage {
 	}
 
 	/**
+	 * Import the partners of the latest draw of a list as exclusions
+	 *
+	 * @param list - The label of the list in the dialog
+	 */
+	async importExclusions(list: string): Promise<void> {
+		await this.section('Participants').getByRole('button', { name: 'Import exclusions' }).click()
+		await this.dialog('Import exclusions').getByRole('radio', { name: list, exact: true }).check({ force: true })
+		await this.dialog('Import exclusions').getByRole('button', { name: 'Import' }).click()
+		await this.dialog('Import exclusions').waitFor({ state: 'hidden' })
+	}
+
+	/**
 	 * Draw the partners and confirm the dialog
 	 */
 	async draw(): Promise<void> {

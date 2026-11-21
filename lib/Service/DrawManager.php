@@ -67,7 +67,6 @@ final class DrawManager {
 	/**
 	 * Draw the partners of all participants and send every participant an email with their partner.
 	 *
-	 * Nobody gets their partner of the previous draw of the list.
 	 * The draw is stored even if some emails can not be sent, they can be sent again with `notify()`.
 	 *
 	 * @throws InvalidInputException If a participant has no email address, there are too few participants or no valid draw exists
@@ -79,11 +78,9 @@ final class DrawManager {
 			$recipients[$participant->getId()] = $this->participantService->getRecipient($participant);
 		}
 
-		$previous = $this->drawMapper->getLatestDraw($list);
 		$pairings = $this->drawService->draw(
 			array_map(static fn (Participant $participant): string => $participant->getId(), $participants),
 			$this->exclusionMapper->getExclusions($list),
-			$previous === null ? [] : $this->pairingMapper->getPairings($previous),
 		);
 
 		$draw = $this->atomic(function () use ($list, $pairings): Draw {

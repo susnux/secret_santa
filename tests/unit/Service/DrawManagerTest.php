@@ -152,12 +152,13 @@ final class DrawManagerTest extends TestCase {
 		$this->assertSame([$draw->getId()], array_map(static fn ($draw) => $draw->getId(), $this->createManager()->getDraws($this->list)));
 	}
 
-	public function testDrawAvoidsPartnersOfThePreviousDraw(): void {
+	public function testDrawRespectsImportedExclusions(): void {
 		$this->addGuests(['alice', 'bob', 'carol', 'dave', 'erin']);
 		$manager = $this->createManager();
 
 		$manager->draw($this->list);
 		$first = $this->takeSentPartners();
+		Server::get(ExclusionService::class)->importDraw($this->list, $this->list);
 		$manager->draw($this->list);
 		$second = $this->takeSentPartners();
 
@@ -167,20 +168,28 @@ final class DrawManagerTest extends TestCase {
 		$this->assertCount(2, $manager->getDraws($this->list));
 	}
 
-	public function testDrawIsRefusedIfItIsTheOnlyValidDraw(): void {
+	public function testThreeParticipantsCanDrawAgain(): void {
 		$this->addGuests(['alice', 'bob', 'carol']);
 		$manager = $this->createManager();
+
 		$manager->draw($this->list);
-		$this->takeSentPartners();
+		$manager->draw($this->list);
+
+		$this->assertCount(2, $manager->getDraws($this->list));
+	}
+
+	public function testDrawIsRefusedIfItIsTheOnlyValidDraw(): void {
+		$this->addGuests(['alice', 'bob', 'carol']);
+		Server::get(ExclusionService::class)->setExclusions($this->list, $this->participants['alice'], [$this->participants['bob']->getId()], false);
 
 		try {
-			$manager->draw($this->list);
+			$this->createManager()->draw($this->list);
 			$this->fail('Expected an exception');
 		} catch (InvalidInputException $error) {
 			$this->assertSame('Only one valid draw exists.', $error->getMessage());
 		}
 		$this->assertSame([], $this->messages);
-		$this->assertCount(1, $manager->getDraws($this->list));
+		$this->assertSame([], $this->createManager()->getDraws($this->list));
 	}
 
 	public function testParticipantWithoutEmail(): void {

@@ -13,10 +13,10 @@
 - Create lists of participants, both Nextcloud users and guests by name and email
 - Write the email every participant receives
 - Draw the partners and notify every participant by email whom to give a gift
-- Nobody draws the same partner as in the previous draw
 - Exclude partners, e.g. couples, from drawing each other
+- Import the partners of an earlier draw, so nobody draws the same partner again
 ]]></description>
-	<version>0.0.3</version>
+	<version>0.0.4</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="opensource@fthiessen.de" homepage="https://github.com/susnux/secret_santa">Ferdinand Thiessen</author>
 	<namespace>SecretSanta</namespace>

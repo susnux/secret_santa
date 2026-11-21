@@ -140,6 +140,27 @@ export function setExclusions(listId: string, participantId: string, receiverIds
 }
 
 /**
+ * Exclude the partners of the latest draw of a list, so nobody draws the same partner again
+ *
+ * @param listId - The id of the list
+ * @param sourceListId - The id of the list whose latest draw is imported, can be the list itself
+ * @return The updated list
+ */
+export function importExclusions(listId: string, sourceListId: string): Promise<ISecretSantaList> {
+	return ocsData(axios.post(apiUrl('lists/{listId}/exclusions/import', { listId }), { sourceListId }))
+}
+
+/**
+ * Remove the exclusions imported from draws
+ *
+ * @param listId - The id of the list
+ * @return The updated list
+ */
+export function removeImportedExclusions(listId: string): Promise<ISecretSantaList> {
+	return ocsData(axios.delete(apiUrl('lists/{listId}/exclusions/imported', { listId })))
+}
+
+/**
  * Get the draws of a list, the latest first
  *
  * @param listId - The id of the list

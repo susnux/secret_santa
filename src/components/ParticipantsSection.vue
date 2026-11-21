@@ -7,7 +7,7 @@
 import type { NcSelectUsersModel } from '@nextcloud/vue/components/NcSelectUsers'
 import type { IExclusion, IParticipant, ISecretSantaList } from '../models/types.ts'
 
-import { mdiAccountMultipleRemoveOutline, mdiAccountPlusOutline, mdiPencil, mdiTrashCan } from '@mdi/js'
+import { mdiAccountMultipleRemoveOutline, mdiAccountPlusOutline, mdiHistory, mdiPencil, mdiTrashCan } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
 import { spawnDialog } from '@nextcloud/vue/functions/dialog'
 import { computed, ref } from 'vue'
@@ -20,7 +20,8 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import ExclusionsDialog from './ExclusionsDialog.vue'
 import GuestDialog from './GuestDialog.vue'
-import { addUser, removeParticipant, searchUsers } from '../api/index.ts'
+import ImportExclusionsDialog from './ImportExclusionsDialog.vue'
+import { addUser, removeImportedExclusions, removeParticipant, searchUsers } from '../api/index.ts'
 import { getOcsErrorMessage } from '../utils/errors.ts'
 import { PLAIN_TEXT } from '../utils/l10n.ts'
 import logger from '../utils/logger.ts'
@@ -29,12 +30,16 @@ const exclusions = defineModel<IExclusion[]>('exclusions', { required: true })
 
 const props = defineProps<{
 	list: ISecretSantaList
+	/** All lists of the user, to import exclusions from */
+	lists: ISecretSantaList[]
 	participants: IParticipant[]
 }>()
 
 const emit = defineEmits<{
 	/** The participants changed, which can also change the exclusions and draws */
 	changed: []
+	/** Exclusions were imported or removed */
+	'update:list': [list: ISecretSantaList]
 }>()
 
 const error = ref('')
@@ -154,6 +159,29 @@ async function editExclusions(participant: IParticipant) {
 }
 
 /**
+ * Show the dialog to import the partners of a draw as exclusions
+ */
+async function importDraw() {
+	const updated = await spawnDialog(ImportExclusionsDialog, { list: props.list, lists: props.lists })
+	if (updated) {
+		emit('update:list', updated)
+	}
+}
+
+/**
+ * Remove the exclusions imported from draws
+ */
+async function removeImported() {
+	error.value = ''
+	try {
+		emit('update:list', await removeImportedExclusions(props.list.id))
+	} catch (e) {
+		logger.error('Failed to remove the imported exclusions', { error: e })
+		error.value = getOcsErrorMessage(e) ?? t('secret_santa', 'Could not remove the imported exclusions.')
+	}
+}
+
+/**
  * Remove a participant from the list
  *
  * @param participant - The participant to remove
@@ -235,6 +263,20 @@ async function remove(participant: IParticipant) {
 				</NcActions>
 			</li>
 		</ul>
+		<NcNoteCard v-if="list.exclusionsImported" type="info">
+			<p>
+				{{ t('secret_santa', 'Exclusions were imported from earlier draws: nobody draws the partner they drew there. They are not shown, as they would reveal who drew whom.') }}
+			</p>
+			<NcButton :class="$style.participantsSection__removeImported" variant="tertiary" @click="removeImported">
+				{{ t('secret_santa', 'Remove imported exclusions') }}
+			</NcButton>
+		</NcNoteCard>
+		<NcButton :class="$style.participantsSection__import" @click="importDraw">
+			<template #icon>
+				<NcIconSvgWrapper :path="mdiHistory" />
+			</template>
+			{{ t('secret_santa', 'Import exclusions') }}
+		</NcButton>
 	</section>
 </template>
 
@@ -284,6 +326,14 @@ async function remove(participant: IParticipant) {
 
 .participantsSection__noEmail :global(.option__lineone ~ *) {
 	color: var(--color-text-error, var(--color-error-text));
+}
+
+.participantsSection__import {
+	margin-block-start: calc(2 * var(--default-grid-baseline));
+}
+
+.participantsSection__removeImported {
+	margin-block-start: var(--default-grid-baseline);
 }
 
 .participantsSection__excluded {

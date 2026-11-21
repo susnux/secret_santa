@@ -69,7 +69,7 @@ final class DrawController extends BaseOCSController {
 	/**
 	 * Draw the partners and send every participant an email with their partner
 	 *
-	 * Nobody draws themselves, an excluded partner or their partner of the previous draw,
+	 * Nobody draws themselves or an excluded partner, including the partners of imported draws,
 	 * and no two participants draw each other.
 	 * The draw is stored even if some emails could not be sent, they have no `notifiedAt` and can be sent again.
 	 * The drawn partners are never returned.

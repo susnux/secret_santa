@@ -96,8 +96,10 @@ async function load() {
 		<ParticipantsSection
 			v-model:exclusions="exclusions"
 			:list="list"
+			:lists="store.lists"
 			:participants="participants"
-			@changed="load" />
+			@changed="load"
+			@update:list="store.setList" />
 		<MailSection
 			:list="list"
 			:participants="participants"
