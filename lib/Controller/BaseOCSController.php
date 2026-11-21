@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+/*!
+ * SPDX-FileCopyrightText: 2026 Ferdinand Thiessen <opensource@fthiessen.de>
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+namespace OCA\SecretSanta\Controller;
+
+use OCA\SecretSanta\AppInfo\Application;
+use OCA\SecretSanta\Db\Participant;
+use OCA\SecretSanta\Db\SecretSantaList as SecretSantaListEntity;
+use OCA\SecretSanta\Service\ListService;
+use OCA\SecretSanta\Service\ParticipantService;
+use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\OCS\OCSNotFoundException;
+use OCP\AppFramework\OCSController;
+use OCP\IRequest;
+
+/**
+ * Base of the API controllers, loads lists of the current user and their participants
+ */
+abstract class BaseOCSController extends OCSController {
+
+	public function __construct(
+		IRequest $request,
+		protected ListService $listService,
+		protected ParticipantService $participantService,
+		protected ?string $userId,
+	) {
+		parent::__construct(Application::APP_ID, $request);
+	}
+
+	/**
+	 * @throws OCSNotFoundException If the list does not exist or is not owned by the current user
+	 */
+	protected function findList(string $listId): SecretSantaListEntity {
+		if ($this->userId === null) {
+			throw new OCSNotFoundException();
+		}
+		try {
+			return $this->listService->get($listId, $this->userId);
+		} catch (DoesNotExistException) {
+			throw new OCSNotFoundException();
+		}
+	}
+
+	/**
+	 * @throws OCSNotFoundException If the participant is not part of the list
+	 */
+	protected function findParticipant(SecretSantaListEntity $list, string $participantId): Participant {
+		try {
+			return $this->participantService->get($list, $participantId);
+		} catch (DoesNotExistException) {
+			throw new OCSNotFoundException();
+		}
+	}
+}

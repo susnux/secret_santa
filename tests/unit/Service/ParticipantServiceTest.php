@@ -9,12 +9,14 @@ declare(strict_types=1);
 
 namespace OCA\SecretSanta\Tests\Unit\Service;
 
+use OCA\SecretSanta\Db\ExclusionMapper;
 use OCA\SecretSanta\Db\ParticipantMapper;
 use OCA\SecretSanta\Db\SecretSantaList;
 use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\Service\ListService;
 use OCA\SecretSanta\Service\ParticipantService;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\IDBConnection;
 use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\IUser;
@@ -79,12 +81,14 @@ final class ParticipantServiceTest extends TestCase {
 		$shareManager->method('shareWithGroupMembersOnly')->willReturn($groupMembersOnly);
 		$shareManager->method('shareWithGroupMembersOnlyExcludeGroupsList')->willReturn($excludedGroups);
 		return new ParticipantService(
+			Server::get(IDBConnection::class),
 			$l10n,
 			$this->userManager,
 			$this->groupManager,
 			$shareManager,
 			Server::get(IEmailValidator::class),
 			Server::get(ParticipantMapper::class),
+			Server::get(ExclusionMapper::class),
 		);
 	}
 

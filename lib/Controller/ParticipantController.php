@@ -10,38 +10,21 @@ declare(strict_types=1);
 namespace OCA\SecretSanta\Controller;
 
 use InvalidArgumentException;
-use OCA\SecretSanta\AppInfo\Application;
-use OCA\SecretSanta\Db\Participant;
-use OCA\SecretSanta\Db\SecretSantaList;
 use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\ResponseDefinitions;
-use OCA\SecretSanta\Service\ListService;
-use OCA\SecretSanta\Service\ParticipantService;
-use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCS\OCSBadRequestException;
 use OCP\AppFramework\OCS\OCSNotFoundException;
-use OCP\AppFramework\OCSController;
-use OCP\IRequest;
 
 /**
  * @psalm-import-type SecretSantaParticipant from ResponseDefinitions
  *
  * @psalm-api Loaded by the router
  */
-final class ParticipantController extends OCSController {
-
-	public function __construct(
-		IRequest $request,
-		private ListService $listService,
-		private ParticipantService $participantService,
-		private ?string $userId,
-	) {
-		parent::__construct(Application::APP_ID, $request);
-	}
+final class ParticipantController extends BaseOCSController {
 
 	/**
 	 * Get the participants of a list
@@ -138,30 +121,5 @@ final class ParticipantController extends OCSController {
 		$list = $this->findList($listId);
 		$this->participantService->delete($this->findParticipant($list, $participantId));
 		return new DataResponse(null);
-	}
-
-	/**
-	 * @throws OCSNotFoundException If the list does not exist or is not owned by the current user
-	 */
-	private function findList(string $listId): SecretSantaList {
-		if ($this->userId === null) {
-			throw new OCSNotFoundException();
-		}
-		try {
-			return $this->listService->get($listId, $this->userId);
-		} catch (DoesNotExistException) {
-			throw new OCSNotFoundException();
-		}
-	}
-
-	/**
-	 * @throws OCSNotFoundException If the participant is not part of the list
-	 */
-	private function findParticipant(SecretSantaList $list, string $participantId): Participant {
-		try {
-			return $this->participantService->get($list, $participantId);
-		} catch (DoesNotExistException) {
-			throw new OCSNotFoundException();
-		}
 	}
 }

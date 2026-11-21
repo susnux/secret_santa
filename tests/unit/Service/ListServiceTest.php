@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\SecretSanta\Tests\Unit\Service;
 
+use OCA\SecretSanta\Db\ExclusionMapper;
 use OCA\SecretSanta\Db\ParticipantMapper;
 use OCA\SecretSanta\Db\SecretSantaListMapper;
 use OCA\SecretSanta\Exception\InvalidInputException;
@@ -39,6 +40,7 @@ final class ListServiceTest extends TestCase {
 			$l10n,
 			Server::get(SecretSantaListMapper::class),
 			$this->participantMapper,
+			Server::get(ExclusionMapper::class),
 		);
 	}
 

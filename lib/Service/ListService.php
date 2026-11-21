@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\SecretSanta\Service;
 
 use InvalidArgumentException;
+use OCA\SecretSanta\Db\ExclusionMapper;
 use OCA\SecretSanta\Db\ParticipantMapper;
 use OCA\SecretSanta\Db\SecretSantaList;
 use OCA\SecretSanta\Db\SecretSantaListMapper;
@@ -37,6 +38,7 @@ final class ListService {
 		private IL10N $l10n,
 		private SecretSantaListMapper $listMapper,
 		private ParticipantMapper $participantMapper,
+		private ExclusionMapper $exclusionMapper,
 	) {
 	}
 
@@ -120,10 +122,11 @@ final class ListService {
 	}
 
 	/**
-	 * Delete a list including its participants.
+	 * Delete a list including its participants and their exclusions.
 	 */
 	public function delete(SecretSantaList $list): void {
 		$this->atomic(function () use ($list): void {
+			$this->exclusionMapper->deleteByList($list);
 			$this->participantMapper->deleteByList($list);
 			$this->listMapper->delete($list);
 		}, $this->db);

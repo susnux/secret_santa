@@ -10,12 +10,15 @@ declare(strict_types=1);
 namespace OCA\SecretSanta\Service;
 
 use InvalidArgumentException;
+use OCA\SecretSanta\Db\ExclusionMapper;
 use OCA\SecretSanta\Db\Participant;
 use OCA\SecretSanta\Db\ParticipantMapper;
 use OCA\SecretSanta\Db\SecretSantaList;
 use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\ResponseDefinitions;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\Db\TTransactional;
+use OCP\IDBConnection;
 use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\IUser;
@@ -27,6 +30,7 @@ use OCP\Share\IManager as IShareManager;
  * @psalm-import-type SecretSantaParticipant from ResponseDefinitions
  */
 final class ParticipantService {
+	use TTransactional;
 
 	/** Maximum number of participants of a list, limits the number of emails sent by a draw */
 	public const int MAX_PARTICIPANTS = 100;
@@ -35,12 +39,14 @@ final class ParticipantService {
 
 	/** @psalm-suppress PossiblyUnusedMethod Created by the DI container */
 	public function __construct(
+		private IDBConnection $db,
 		private IL10N $l10n,
 		private IUserManager $userManager,
 		private IGroupManager $groupManager,
 		private IShareManager $shareManager,
 		private IEmailValidator $emailValidator,
 		private ParticipantMapper $participantMapper,
+		private ExclusionMapper $exclusionMapper,
 	) {
 	}
 
@@ -118,8 +124,14 @@ final class ParticipantService {
 		return $this->participantMapper->update($participant);
 	}
 
+	/**
+	 * Remove a participant from their list including their exclusions.
+	 */
 	public function delete(Participant $participant): void {
-		$this->participantMapper->delete($participant);
+		$this->atomic(function () use ($participant): void {
+			$this->exclusionMapper->deleteByParticipant($participant);
+			$this->participantMapper->delete($participant);
+		}, $this->db);
 	}
 
 	/**

@@ -10,35 +10,21 @@ declare(strict_types=1);
 namespace OCA\SecretSanta\Controller;
 
 use InvalidArgumentException;
-use OCA\SecretSanta\AppInfo\Application;
-use OCA\SecretSanta\Db\SecretSantaList as SecretSantaListEntity;
 use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\ResponseDefinitions;
-use OCA\SecretSanta\Service\ListService;
-use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCS\OCSBadRequestException;
 use OCP\AppFramework\OCS\OCSNotFoundException;
-use OCP\AppFramework\OCSController;
-use OCP\IRequest;
 
 /**
  * @psalm-import-type SecretSantaList from ResponseDefinitions
  *
  * @psalm-api Loaded by the router
  */
-final class ListController extends OCSController {
-
-	public function __construct(
-		IRequest $request,
-		private ListService $listService,
-		private ?string $userId,
-	) {
-		parent::__construct(Application::APP_ID, $request);
-	}
+final class ListController extends BaseOCSController {
 
 	/**
 	 * Get all lists of the current user
@@ -151,19 +137,5 @@ final class ListController extends OCSController {
 	public function deleteList(string $listId): DataResponse {
 		$this->listService->delete($this->findList($listId));
 		return new DataResponse(null);
-	}
-
-	/**
-	 * @throws OCSNotFoundException If the list does not exist or is not owned by the current user
-	 */
-	private function findList(string $listId): SecretSantaListEntity {
-		if ($this->userId === null) {
-			throw new OCSNotFoundException();
-		}
-		try {
-			return $this->listService->get($listId, $this->userId);
-		} catch (DoesNotExistException) {
-			throw new OCSNotFoundException();
-		}
 	}
 }

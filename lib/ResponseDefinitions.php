@@ -35,6 +35,13 @@ namespace OCA\SecretSanta;
  *     hasEmail: bool,
  * }
  *
+ * The participant `giverId` must not draw the participant `receiverId` as their partner.
+ *
+ * @psalm-type SecretSantaExclusion = array{
+ *     giverId: string,
+ *     receiverId: string,
+ * }
+ *
  * @psalm-suppress UnusedClass Only used as a container for the response type definitions
  */
 final class ResponseDefinitions {
