@@ -40,7 +40,7 @@ This file provides instructions for AI coding agents (Claude Code, GitHub Copilo
 
 - **Secret pairings**: the receiver drawn for a participant never leaves the server except in the email sent to that participant. No API response, log message or exception contains it, the organizer only sees whether a participant was notified. The `{partner}` placeholder is only allowed in the text of the email, not in its subject, as Nextcloud and mail servers log subjects. The organizer may take part in their own list.
 - **Ids**: entities use Snowflake IDs (`SnowflakeAwareEntity`), sent through the API as strings as they exceed the safe integer range of JavaScript.
-- **Access**: every list belongs to one owner. Services check the owner before reading or changing a list, its participants, exclusions or draws.
+- **Access**: a list belongs to one owner and can be shared with groups. Services check that the user owns the list or is a member of one of its groups before reading or changing a list, its participants, exclusions or draws. Only the owner can delete and share it. If the owner is deleted, their shared lists are kept without owner.
 - **Emails**: emails are sent with `IMailer` through the mail server of the instance, the app has no SMTP settings of its own.
 - **Exceptions**: exception messages are English. For errors a user can trigger from the UI (an empty name, an invalid email address, a draw without a valid solution), throw `InvalidInputException` with a translated hint; the controller sends `getHint()` to the client. Errors only an API caller can hit stay plain English exceptions such as `InvalidArgumentException`.
 

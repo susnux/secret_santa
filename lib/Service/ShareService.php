@@ -17,6 +17,7 @@ use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\Interaction\ListResource;
 use OCA\SecretSanta\ResponseDefinitions;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\DB\Exception;
 use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\Interaction\Actions\ShareAction;
@@ -70,16 +71,17 @@ final class ShareService {
 			throw new InvalidInputException('Sharing with the group is not allowed.', $restriction);
 		}
 
-		foreach ($this->shareMapper->getShares($list) as $share) {
-			if ($share->groupId === $group->getGID()) {
-				throw new InvalidInputException(
-					'The list is already shared with the group.',
-					$this->l10n->t('The list is already shared with %s.', [$group->getDisplayName()]),
-				);
+		try {
+			$this->shareMapper->insert($list, $group->getGID());
+		} catch (Exception $error) {
+			if ($error->getReason() !== Exception::REASON_UNIQUE_CONSTRAINT_VIOLATION) {
+				throw $error;
 			}
+			throw new InvalidInputException(
+				'The list is already shared with the group.',
+				$this->l10n->t('The list is already shared with %s.', [$group->getDisplayName()]),
+			);
 		}
-
-		$this->shareMapper->insert($list, $group->getGID());
 		return new Share($list->getId(), $group->getGID());
 	}
 

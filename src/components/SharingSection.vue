@@ -49,7 +49,9 @@ watch(() => props.list.id, async (listId) => {
 		}
 	} catch (e) {
 		logger.error('Failed to load the shares', { error: e })
-		error.value = t('secret_santa', 'Could not load the groups the list is shared with.')
+		if (listId === props.list.id) {
+			error.value = t('secret_santa', 'Could not load the groups the list is shared with.')
+		}
 	}
 }, { immediate: true })
 
@@ -157,10 +159,9 @@ async function unshare(share: IShare) {
 				:key="share.groupId"
 				:class="$style.sharingSection__share"
 				:data-group="share.groupId">
-				<NcListItemIcon
-					:class="$style.sharingSection__group"
-					:name="share.displayName"
-					isNoUser />
+				<div :class="$style.sharingSection__group">
+					<NcListItemIcon :name="share.displayName" isNoUser />
+				</div>
 				<NcButton
 					v-if="isOwner"
 					variant="tertiary"
