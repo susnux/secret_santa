@@ -159,10 +159,9 @@ async function unshare(share: IShare) {
 				:key="share.groupId"
 				:class="$style.sharingSection__share"
 				:data-group="share.groupId">
-				<NcListItemIcon
-					:class="$style.sharingSection__group"
-					:name="share.displayName"
-					isNoUser />
+				<div :class="$style.sharingSection__group">
+					<NcListItemIcon :name="share.displayName" isNoUser />
+				</div>
 				<NcButton
 					v-if="isOwner"
 					variant="tertiary"
