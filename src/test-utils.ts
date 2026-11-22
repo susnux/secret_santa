@@ -16,6 +16,8 @@ import { vi } from 'vitest'
 export function createTestList(values: Partial<ISecretSantaList> = {}): ISecretSantaList {
 	return {
 		id: '10',
+		owner: 'admin',
+		ownerDisplayName: 'Olivia Owner',
 		name: 'Christmas',
 		senderName: null,
 		mailSubject: 'Hi {name}',

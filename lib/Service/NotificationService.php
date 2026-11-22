@@ -61,8 +61,10 @@ final class NotificationService {
 			$template->addBodyText(nl2br(htmlspecialchars($paragraph), false), $paragraph);
 		}
 
-		$owner = $this->userManager->get($list->getOwner());
-		$ownerName = $owner?->getDisplayName() ?? $list->getOwner();
+		$ownerId = $list->getOwner();
+		$owner = $ownerId === null ? null : $this->userManager->get($ownerId);
+		// TRANSLATORS Sender of the emails of lists whose organizer was deleted
+		$ownerName = $owner?->getDisplayName() ?? $ownerId ?? $this->l10n->t('Secret Santa');
 		$ownerEmail = $owner?->getEMailAddress() ?? '';
 		$message = $this->mailer->createMessage();
 		$message->setFrom([Util::getDefaultEmailAddress('noreply') => $list->getSenderName() ?? $ownerName]);

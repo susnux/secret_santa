@@ -11,6 +11,7 @@ namespace OCA\SecretSanta\Db;
 
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\QBMapper;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
 /**
@@ -51,5 +52,21 @@ final class SecretSantaListMapper extends QBMapper {
 			->where($qb->expr()->eq('owner', $qb->createNamedParameter($owner)))
 			->orderBy('id');
 		return $this->findEntities($qb);
+	}
+
+	/**
+	 * @param list<string> $ids
+	 * @return list<SecretSantaList> The existing lists of the ids, in no particular order
+	 */
+	public function getListsByIds(array $ids): array {
+		$lists = [];
+		foreach (array_chunk($ids, 1000) as $chunk) {
+			$qb = $this->db->getQueryBuilder();
+			$qb->select('*')
+				->from($this->tableName)
+				->where($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_STR_ARRAY)));
+			$lists = [...$lists, ...$this->findEntities($qb)];
+		}
+		return $lists;
 	}
 }

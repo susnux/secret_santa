@@ -46,6 +46,20 @@ describe('MailSection', () => {
 		expect(wrapper.find('[data-preview="body"]').text()).toBe('Bob by Alice')
 	})
 
+	it('uses the name of the owner as sender of shared lists', () => {
+		const wrapper = mount(MailSection, { props: { list: { ...list, owner: 'bob', ownerDisplayName: 'Bob' }, participants: [] } })
+
+		expect(wrapper.find('dd').text()).toBe('Bob')
+		expect(wrapper.text()).toContain('The name of the owner Bob is used if empty.')
+	})
+
+	it('uses the name of the app as sender of lists without owner', () => {
+		const wrapper = mount(MailSection, { props: { list: { ...list, owner: null, ownerDisplayName: null }, participants: [] } })
+
+		expect(wrapper.find('dd').text()).toBe('Secret Santa')
+		expect(wrapper.text()).toContain('"Secret Santa" is used if empty.')
+	})
+
 	it('shows the sender name in the preview', async () => {
 		const wrapper = mountSection()
 

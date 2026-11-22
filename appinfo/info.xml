@@ -16,8 +16,9 @@
 - Exclude partners, e.g. couples, from drawing each other
 - Import the partners of an earlier draw, so nobody draws the same partner again
 - Archive the lists of past gift exchanges, they are hidden from the navigation and can no longer be changed
+- Share lists with groups to organize the gift exchange together
 ]]></description>
-	<version>0.0.5</version>
+	<version>0.0.6</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="opensource@fthiessen.de" homepage="https://github.com/susnux/secret_santa">Ferdinand Thiessen</author>
 	<namespace>SecretSanta</namespace>

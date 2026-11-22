@@ -18,6 +18,7 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import DrawSection from '../components/DrawSection.vue'
 import MailSection from '../components/MailSection.vue'
 import ParticipantsSection from '../components/ParticipantsSection.vue'
+import SharingSection from '../components/SharingSection.vue'
 import { fetchDraws, fetchExclusions, fetchParticipants, unarchiveList } from '../api/index.ts'
 import { useListsStore } from '../store/lists.ts'
 import { getOcsErrorMessage, isNotFoundError } from '../utils/errors.ts'
@@ -136,6 +137,7 @@ async function unarchive() {
 			v-model:draws="draws"
 			:list="list"
 			:participants="participants" />
+		<SharingSection :list="list" />
 	</main>
 </template>
 

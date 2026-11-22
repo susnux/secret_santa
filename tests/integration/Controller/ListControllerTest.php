@@ -39,7 +39,9 @@ final class ListControllerTest extends IntegrationTestCase {
 		$this->assertStringContainsString('{partner}', $list['mailBody']);
 		$this->assertFalse($list['exclusionsImported']);
 		$this->assertNull($list['archivedAt']);
-		$this->assertSame(['id', 'name', 'senderName', 'mailSubject', 'mailBody', 'exclusionsImported', 'archivedAt'], array_keys($list));
+		$this->assertSame($alice, $list['owner']);
+		$this->assertSame($alice, $list['ownerDisplayName']);
+		$this->assertSame(['id', 'owner', 'ownerDisplayName', 'name', 'senderName', 'mailSubject', 'mailBody', 'exclusionsImported', 'archivedAt'], array_keys($list));
 
 		$this->assertSame($list, $this->assertOcsResponse(200, $this->ocsRequest($alice, 'GET', 'api/v1/lists/' . $list['id'])));
 		$this->assertSame([$list], $this->assertOcsResponse(200, $this->ocsRequest($alice, 'GET', 'api/v1/lists')));
@@ -64,6 +66,8 @@ final class ListControllerTest extends IntegrationTestCase {
 
 		$this->assertSame([
 			'id' => $list['id'],
+			'owner' => $alice,
+			'ownerDisplayName' => $alice,
 			'name' => 'Christmas',
 			'senderName' => 'Santa',
 			'mailSubject' => 'Psst',

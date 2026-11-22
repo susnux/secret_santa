@@ -6,7 +6,7 @@
 <script setup lang="ts">
 import type { ISecretSantaList } from '../models/types.ts'
 
-import { mdiArchiveArrowUpOutline, mdiArchiveOutline, mdiGiftOutline, mdiTrashCan } from '@mdi/js'
+import { mdiAccountGroupOutline, mdiArchiveArrowUpOutline, mdiArchiveOutline, mdiGiftOutline, mdiTrashCan } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
 import { spawnDialog } from '@nextcloud/vue/functions/dialog'
 import { ref } from 'vue'
@@ -22,6 +22,7 @@ import { unarchiveList } from '../api/index.ts'
 import { useListsStore } from '../store/lists.ts'
 import { getOcsErrorMessage } from '../utils/errors.ts'
 import { PLAIN_TEXT } from '../utils/l10n.ts'
+import { isOwnList } from '../utils/lists.ts'
 import logger from '../utils/logger.ts'
 
 const store = useListsStore()
@@ -88,7 +89,7 @@ async function remove(list: ISecretSantaList) {
 				forceDisplayActions
 				:data-list="list.id">
 				<template #icon>
-					<NcIconSvgWrapper :path="mdiGiftOutline" />
+					<NcIconSvgWrapper :path="isOwnList(list) ? mdiGiftOutline : mdiAccountGroupOutline" />
 				</template>
 				<template #details>
 					<NcDateTime :timestamp="(list.archivedAt ?? 0) * 1000" />
@@ -100,7 +101,7 @@ async function remove(list: ISecretSantaList) {
 						</template>
 						{{ t('secret_santa', 'Unarchive') }}
 					</NcActionButton>
-					<NcActionButton closeAfterClick @click="remove(list)">
+					<NcActionButton v-if="isOwnList(list)" closeAfterClick @click="remove(list)">
 						<template #icon>
 							<NcIconSvgWrapper :path="mdiTrashCan" />
 						</template>

@@ -15,10 +15,15 @@ Organize a Secret Santa gift exchange ("Wichteln") in Nextcloud.
 - Exclude partners, e.g. couples, from drawing each other
 - Import the partners of an earlier draw, so nobody draws the same partner again
 - Archive the lists of past gift exchanges, they are hidden from the navigation and can no longer be changed
+- Share lists with groups to organize the gift exchange together
 
 Emails are sent through the mail server configured in the Nextcloud administration settings.
 Every user who can use the app can send emails with their own text to the participants, including guests.
 Administrators can limit the app to some groups in the app management.
+
+Lists can be shared with groups, following the sharing settings of the server (e.g. sharing only with the own groups).
+All members of the groups can change the list and draw the partners, only the owner can delete and share it.
+If the owner is deleted, their shared lists are kept without owner.
 
 ## Development
 

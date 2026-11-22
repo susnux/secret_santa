@@ -16,13 +16,17 @@ use OCA\SecretSanta\Db\PairingMapper;
 use OCA\SecretSanta\Db\ParticipantMapper;
 use OCA\SecretSanta\Db\SecretSantaList;
 use OCA\SecretSanta\Db\SecretSantaListMapper;
+use OCA\SecretSanta\Db\ShareMapper;
+use OCA\SecretSanta\Db\SnowflakeId;
 use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\ResponseDefinitions;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\TTransactional;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IDBConnection;
+use OCP\IGroupManager;
 use OCP\IL10N;
+use OCP\IUserManager;
 
 /**
  * @psalm-import-type SecretSantaList from ResponseDefinitions as SecretSantaListData
@@ -44,21 +48,38 @@ final class ListService {
 		private ExclusionMapper $exclusionMapper,
 		private DrawMapper $drawMapper,
 		private PairingMapper $pairingMapper,
+		private ShareMapper $shareMapper,
 		private ITimeFactory $timeFactory,
+		private IUserManager $userManager,
+		private IGroupManager $groupManager,
 	) {
 	}
 
 	/**
-	 * Get a list of the given user.
+	 * Get a list the given user owns or that is shared with one of their groups.
 	 *
-	 * @throws DoesNotExistException If the list does not exist or is owned by another user
+	 * @throws DoesNotExistException If the list does not exist or the user can not access it
 	 */
 	public function get(string $id, string $userId): SecretSantaList {
 		$list = $this->listMapper->getList($id);
-		if ($list->getOwner() !== $userId) {
+		if ($list->getOwner() !== $userId && !$this->isSharedWithUser($list, $userId)) {
 			throw new DoesNotExistException('List not found');
 		}
 		return $list;
+	}
+
+	/**
+	 * Check if the user owns the list, only the owner can delete and share it.
+	 */
+	public function isOwner(SecretSantaList $list, string $userId): bool {
+		return $list->getOwner() === $userId;
+	}
+
+	/**
+	 * The message shown to users who try to delete or share a list they do not own
+	 */
+	public function getOwnerOnlyHint(): string {
+		return $this->l10n->t('Only the owner of the list can delete and share it.');
 	}
 
 	/**
@@ -73,10 +94,28 @@ final class ListService {
 	}
 
 	/**
-	 * @return list<SecretSantaList>
+	 * Get the lists the user owns and the lists shared with their groups.
+	 *
+	 * @return list<SecretSantaList> The lists ordered by id
 	 */
-	public function getByOwner(string $owner): array {
-		return $this->listMapper->getListsByOwner($owner);
+	public function getAccessible(string $userId): array {
+		$lists = [];
+		foreach ($this->listMapper->getListsByOwner($userId) as $list) {
+			$lists[$list->getId()] = $list;
+		}
+		$sharedIds = [];
+		foreach ($this->shareMapper->getSharesWithGroups($this->getGroupIds($userId)) as $share) {
+			if (!isset($lists[$share->listId])) {
+				$sharedIds[$share->listId] = true;
+			}
+		}
+		foreach ($this->listMapper->getListsByIds(array_map(strval(...), array_keys($sharedIds))) as $list) {
+			$lists[$list->getId()] = $list;
+		}
+
+		$lists = array_values($lists);
+		usort($lists, static fn (SecretSantaList $a, SecretSantaList $b): int => SnowflakeId::compare($a->getId(), $b->getId()));
+		return $lists;
 	}
 
 	/**
@@ -168,16 +207,25 @@ final class ListService {
 			$this->drawMapper->deleteByList($list);
 			$this->exclusionMapper->deleteByList($list);
 			$this->participantMapper->deleteByList($list);
+			$this->shareMapper->deleteByList($list);
 			$this->listMapper->delete($list);
 		}, $this->db);
 	}
 
 	/**
-	 * Delete all lists owned by the given user.
+	 * Remove a deleted owner from their lists.
+	 *
+	 * Lists shared with groups are kept without owner, so the members of the groups can still use them.
+	 * All other lists of the owner are deleted.
 	 */
-	public function deleteByOwner(string $owner): void {
+	public function removeOwner(string $owner): void {
 		foreach ($this->listMapper->getListsByOwner($owner) as $list) {
-			$this->delete($list);
+			if ($this->shareMapper->getShares($list) === []) {
+				$this->delete($list);
+			} else {
+				$list->setOwner(null);
+				$this->listMapper->update($list);
+			}
 		}
 	}
 
@@ -185,8 +233,11 @@ final class ListService {
 	 * @return SecretSantaListData
 	 */
 	public function serialize(SecretSantaList $list): array {
+		$owner = $list->getOwner();
 		return [
 			'id' => $list->getId(),
+			'owner' => $owner,
+			'ownerDisplayName' => $owner === null ? null : ($this->userManager->getDisplayName($owner) ?? $owner),
 			'name' => $list->getName(),
 			'senderName' => $list->getSenderName(),
 			'mailSubject' => $list->getMailSubject(),
@@ -194,6 +245,22 @@ final class ListService {
 			'exclusionsImported' => $list->getExclusionsImported() === true,
 			'archivedAt' => $list->getArchivedAt(),
 		];
+	}
+
+	private function isSharedWithUser(SecretSantaList $list, string $userId): bool {
+		$groupIds = array_map(static fn ($share): string => $share->groupId, $this->shareMapper->getShares($list));
+		if ($groupIds === []) {
+			return false;
+		}
+		return array_intersect($groupIds, $this->getGroupIds($userId)) !== [];
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private function getGroupIds(string $userId): array {
+		$user = $this->userManager->get($userId);
+		return $user === null ? [] : $this->groupManager->getUserGroupIds($user);
 	}
 
 	/**

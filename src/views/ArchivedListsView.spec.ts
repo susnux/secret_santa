@@ -19,6 +19,7 @@ const api = vi.hoisted(() => ({
 vi.mock('../api/index.ts', () => api)
 const { spawnDialog } = vi.hoisted(() => ({ spawnDialog: vi.fn() }))
 vi.mock('@nextcloud/vue/functions/dialog', () => ({ spawnDialog }))
+vi.mock('@nextcloud/auth', () => ({ getCurrentUser: () => ({ uid: 'admin', displayName: 'Olivia Owner', isAdmin: false }) }))
 
 const active = createTestList({ id: '10', name: 'Christmas' })
 const lastYear = createTestList({ id: '11', name: 'Last year', archivedAt: 1_766_000_000 })
@@ -128,6 +129,15 @@ describe('ArchivedListsView', () => {
 
 		expect(spawnDialog).toHaveBeenCalledWith(expect.anything(), { list: older })
 		expect(wrapper.findAll('[data-list]').map((item) => item.attributes('data-list'))).toEqual(['11'])
+	})
+
+	it('does not offer to delete lists of other users', async () => {
+		api.fetchLists.mockResolvedValue([{ ...lastYear, owner: 'bob', ownerDisplayName: 'Bob' }])
+		const wrapper = await mountView()
+
+		const item = wrapper.find('[data-list="11"]')
+		expect(item.html()).toContain('Unarchive')
+		expect(item.html()).not.toContain('Delete')
 	})
 
 	it('keeps a list if the deletion was canceled', async () => {

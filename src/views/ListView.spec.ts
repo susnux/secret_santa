@@ -30,7 +30,7 @@ const list = createTestList({ id: '10', name: 'Christmas' })
 async function mountView(listId: string) {
 	const wrapper = mount(ListView, {
 		props: { listId },
-		global: { stubs: { ParticipantsSection: true, MailSection: true, DrawSection: true } },
+		global: { stubs: { ParticipantsSection: true, MailSection: true, DrawSection: true, SharingSection: true } },
 	})
 	await flushPromises()
 	return wrapper

@@ -64,7 +64,7 @@ final class DrawManagerTest extends TestCase {
 
 	#[\Override]
 	protected function tearDown(): void {
-		$this->listService->deleteByOwner(self::OWNER);
+		$this->listService->removeOwner(self::OWNER);
 		Server::get(IUserManager::class)->get(self::USER)?->delete();
 		parent::tearDown();
 	}
@@ -199,7 +199,7 @@ final class DrawManagerTest extends TestCase {
 		$this->assertInstanceOf(IUser::class, $user);
 		$user->setDisplayName('Bob Builder');
 		$this->addGuests(['alice', 'carol']);
-		$this->participantService->addUser($this->list, self::USER);
+		$this->participantService->addUser($this->list, self::USER, self::OWNER);
 
 		try {
 			$this->createManager()->draw($this->list);

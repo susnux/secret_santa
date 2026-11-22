@@ -69,14 +69,15 @@ final class ParticipantService {
 	/**
 	 * Add a Nextcloud user to a list.
 	 *
-	 * Only users the owner of the list is allowed to share with can be added.
+	 * Only users the acting user is allowed to share with can be added.
 	 *
+	 * @param string $actorId The user who adds the user
 	 * @throws InvalidInputException If the user can not be added
 	 */
-	public function addUser(SecretSantaList $list, string $userId): Participant {
+	public function addUser(SecretSantaList $list, string $userId, string $actorId): Participant {
 		$user = $this->userManager->get($userId);
-		// Users the owner can not share with are reported as unknown to not reveal their existence
-		if ($user === null || !$user->isEnabled() || !$this->canAddUser($list->getOwner(), $user)) {
+		// Users the acting user can not share with are reported as unknown to not reveal their existence
+		if ($user === null || !$user->isEnabled() || !$this->canAddUser($actorId, $user)) {
 			throw new InvalidInputException('Unknown user.', $this->l10n->t('The user does not exist.'));
 		}
 
@@ -251,19 +252,19 @@ final class ParticipantService {
 	}
 
 	/**
-	 * Check if the owner of a list is allowed to add the user, following the sharing restrictions.
+	 * Check if the acting user is allowed to add the user, following the sharing restrictions.
 	 */
-	private function canAddUser(string $ownerId, IUser $user): bool {
-		if ($ownerId === $user->getUID() || !$this->shareManager->shareWithGroupMembersOnly()) {
+	private function canAddUser(string $actorId, IUser $user): bool {
+		if ($actorId === $user->getUID() || !$this->shareManager->shareWithGroupMembersOnly()) {
 			return true;
 		}
 
-		$owner = $this->userManager->get($ownerId);
-		if ($owner === null) {
+		$actor = $this->userManager->get($actorId);
+		if ($actor === null) {
 			return false;
 		}
 		$commonGroups = array_intersect(
-			$this->groupManager->getUserGroupIds($owner),
+			$this->groupManager->getUserGroupIds($actor),
 			$this->groupManager->getUserGroupIds($user),
 		);
 		return array_diff($commonGroups, $this->shareManager->shareWithGroupMembersOnlyExcludeGroupsList()) !== [];

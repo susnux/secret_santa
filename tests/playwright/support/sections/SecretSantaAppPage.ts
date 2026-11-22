@@ -98,7 +98,7 @@ export class SecretSantaAppPage {
 		return this.page.getByRole('dialog', { name })
 	}
 
-	section(name: 'Participants' | 'Email' | 'Draw'): Locator {
+	section(name: 'Participants' | 'Email' | 'Draw' | 'Sharing'): Locator {
 		return this.page.getByRole('region', { name, exact: true })
 	}
 

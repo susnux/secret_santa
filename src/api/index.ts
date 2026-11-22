@@ -5,7 +5,7 @@
 
 import type { AxiosResponse } from '@nextcloud/axios'
 import type { OCSResponse } from '@nextcloud/typings/ocs'
-import type { IDraw, IExclusion, IParticipant, ISecretSantaList, IUserSearchResult } from '../models/types.ts'
+import type { IAutocompleteResult, IDraw, IExclusion, IParticipant, ISecretSantaList, IShare } from '../models/types.ts'
 
 import axios from '@nextcloud/axios'
 import { generateOcsUrl } from '@nextcloud/router'
@@ -208,12 +208,52 @@ export function notifyParticipant(listId: string, drawId: string, participantId:
 }
 
 /**
+ * Get the groups a list is shared with
+ *
+ * @param listId - The id of the list
+ */
+export function fetchShares(listId: string): Promise<IShare[]> {
+	return ocsData(axios.get(apiUrl('lists/{listId}/shares', { listId })))
+}
+
+/**
+ * Share a list with a group, only the owner can share a list
+ *
+ * @param listId - The id of the list
+ * @param groupId - The id of the group
+ */
+export function shareList(listId: string, groupId: string): Promise<IShare> {
+	return ocsData(axios.post(apiUrl('lists/{listId}/shares', { listId }), { groupId }))
+}
+
+/**
+ * Stop sharing a list with a group
+ *
+ * @param listId - The id of the list
+ * @param groupId - The id of the group
+ */
+export async function unshareList(listId: string, groupId: string): Promise<void> {
+	await axios.delete(apiUrl('lists/{listId}/shares/{groupId}', { listId, groupId }))
+}
+
+/**
  * Search the Nextcloud users the current user may share with
  *
  * @param search - The search term
  */
-export function searchUsers(search: string): Promise<IUserSearchResult[]> {
+export function searchUsers(search: string): Promise<IAutocompleteResult[]> {
 	return ocsData(axios.get(generateOcsUrl('core/autocomplete/get'), {
 		params: { search, itemType: 'secret_santa', itemId: '', shareTypes: [0], limit: 10 },
+	}))
+}
+
+/**
+ * Search the groups the current user may share with
+ *
+ * @param search - The search term
+ */
+export function searchGroups(search: string): Promise<IAutocompleteResult[]> {
+	return ocsData(axios.get(generateOcsUrl('core/autocomplete/get'), {
+		params: { search, itemType: 'secret_santa', itemId: '', shareTypes: [1], limit: 10 },
 	}))
 }

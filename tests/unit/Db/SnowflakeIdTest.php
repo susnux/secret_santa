@@ -33,4 +33,19 @@ final class SnowflakeIdTest extends TestCase {
 	public function testIsValid(string $id, bool $expected): void {
 		$this->assertSame($expected, SnowflakeId::isValid($id));
 	}
+
+	public static function dataCompare(): array {
+		return [
+			'equal' => ['42', '42', 0],
+			'smaller with fewer digits' => ['9', '10', -1],
+			'larger with more digits' => ['7012345678901234567', '701234567890123456', 1],
+			'smaller with the same digits' => ['7012345678901234566', '7012345678901234567', -1],
+			'larger with the same digits' => ['9223372036854775807', '9223372036854775806', 1],
+		];
+	}
+
+	#[DataProvider('dataCompare')]
+	public function testCompare(string $a, string $b, int $expected): void {
+		$this->assertSame($expected, SnowflakeId::compare($a, $b) <=> 0);
+	}
 }

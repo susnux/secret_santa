@@ -20,4 +20,5 @@ All notable changes to this project are documented in this file.
 - The drawn partners are only sent by email, they are never shown to the organizer
 - Archiving lists: archived lists are hidden from the navigation, listed on their own page and can not be changed until they are unarchived, but their partners can still be imported as exclusions
 - Draws are refused if they are the only possible one, as everybody could deduce the partners then
+- Sharing lists with groups: all members of the groups can change the list and draw the partners, only the owner can delete and share it. Shared lists of deleted owners are kept without owner
 - German translation

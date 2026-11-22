@@ -57,7 +57,7 @@ final class ParticipantServiceTest extends TestCase {
 
 	#[\Override]
 	protected function tearDown(): void {
-		$this->listService->deleteByOwner(self::OWNER);
+		$this->listService->removeOwner(self::OWNER);
 		$this->owner->delete();
 		$this->user->delete();
 		$this->groupManager->get(self::GROUP)?->delete();
@@ -111,7 +111,7 @@ final class ParticipantServiceTest extends TestCase {
 	public function testAddUser(): void {
 		$service = $this->createService();
 
-		$participant = $service->addUser($this->list, self::USER);
+		$participant = $service->addUser($this->list, self::USER, self::OWNER);
 
 		$this->assertFalse($participant->isGuest());
 		$this->assertSame([
@@ -130,7 +130,7 @@ final class ParticipantServiceTest extends TestCase {
 
 	public function testAddUserRejectsUnknownUser(): void {
 		try {
-			$this->createService()->addUser($this->list, 'secret-santa-participant-test-unknown');
+			$this->createService()->addUser($this->list, 'secret-santa-participant-test-unknown', self::OWNER);
 			$this->fail('Expected an exception');
 		} catch (InvalidInputException $error) {
 			$this->assertSame('Unknown user.', $error->getMessage());
@@ -143,15 +143,15 @@ final class ParticipantServiceTest extends TestCase {
 
 		$this->expectException(InvalidInputException::class);
 		$this->expectExceptionMessage('Unknown user.');
-		$this->createService()->addUser($this->list, self::USER);
+		$this->createService()->addUser($this->list, self::USER, self::OWNER);
 	}
 
 	public function testAddUserRejectsDuplicate(): void {
 		$service = $this->createService();
-		$service->addUser($this->list, self::USER);
+		$service->addUser($this->list, self::USER, self::OWNER);
 
 		try {
-			$service->addUser($this->list, self::USER);
+			$service->addUser($this->list, self::USER, self::OWNER);
 			$this->fail('Expected an exception');
 		} catch (InvalidInputException $error) {
 			$this->assertSame('The user already participates.', $error->getMessage());
@@ -185,11 +185,24 @@ final class ParticipantServiceTest extends TestCase {
 			$this->expectException(InvalidInputException::class);
 			$this->expectExceptionMessage('Unknown user.');
 		}
-		$this->assertSame(self::USER, $service->addUser($this->list, self::USER)->getUserId());
+		$this->assertSame(self::USER, $service->addUser($this->list, self::USER, self::OWNER)->getUserId());
+	}
+
+	public function testAddUserFollowsTheRestrictionsOfTheActingUser(): void {
+		$this->addToGroup($this->owner, self::GROUP);
+		$this->addToGroup($this->user, self::GROUP);
+		$member = $this->createUser(self::USER . '-member');
+		try {
+			$this->expectException(InvalidInputException::class);
+			$this->expectExceptionMessage('Unknown user.');
+			$this->createService(true)->addUser($this->list, self::USER, $member->getUID());
+		} finally {
+			$member->delete();
+		}
 	}
 
 	public function testOwnerCanAlwaysAddThemselves(): void {
-		$this->assertSame(self::OWNER, $this->createService(true)->addUser($this->list, self::OWNER)->getUserId());
+		$this->assertSame(self::OWNER, $this->createService(true)->addUser($this->list, self::OWNER, self::OWNER)->getUserId());
 	}
 
 	public function testAddGuest(): void {
@@ -245,7 +258,7 @@ final class ParticipantServiceTest extends TestCase {
 		}
 
 		try {
-			$service->addUser($this->list, self::USER);
+			$service->addUser($this->list, self::USER, self::OWNER);
 			$this->fail('Expected an exception');
 		} catch (InvalidInputException $error) {
 			$this->assertSame('The list has too many participants.', $error->getMessage());
@@ -273,7 +286,7 @@ final class ParticipantServiceTest extends TestCase {
 
 	public function testUpdateGuestRejectsUsers(): void {
 		$service = $this->createService();
-		$participant = $service->addUser($this->list, self::USER);
+		$participant = $service->addUser($this->list, self::USER, self::OWNER);
 
 		$this->expectException(\InvalidArgumentException::class);
 		$this->expectExceptionMessage('Only guests can be changed.');
@@ -283,7 +296,7 @@ final class ParticipantServiceTest extends TestCase {
 	public function testGetRecipient(): void {
 		$service = $this->createService();
 		$guest = $service->addGuest($this->list, 'Alice', 'alice@example.com');
-		$user = $service->addUser($this->list, self::USER);
+		$user = $service->addUser($this->list, self::USER, self::OWNER);
 		$this->user->setSystemEMailAddress('bob@example.com');
 
 		$this->assertEquals(new Recipient('Alice', 'alice@example.com'), $service->getRecipient($guest));
@@ -292,7 +305,7 @@ final class ParticipantServiceTest extends TestCase {
 
 	public function testGetRecipientOfUserWithoutEmail(): void {
 		$service = $this->createService();
-		$user = $service->addUser($this->list, self::USER);
+		$user = $service->addUser($this->list, self::USER, self::OWNER);
 
 		try {
 			$service->getRecipient($user);
@@ -325,8 +338,8 @@ final class ParticipantServiceTest extends TestCase {
 	public function testDeleteByUser(): void {
 		$service = $this->createService();
 		$other = $this->listService->create(self::OWNER, 'Other');
-		$service->addUser($this->list, self::USER);
-		$service->addUser($other, self::USER);
+		$service->addUser($this->list, self::USER, self::OWNER);
+		$service->addUser($other, self::USER, self::OWNER);
 		$guest = $service->addGuest($other, 'Alice', 'alice@example.com');
 
 		$service->deleteByUser(self::USER);
@@ -339,12 +352,12 @@ final class ParticipantServiceTest extends TestCase {
 		$service = $this->createService();
 		$this->owner->setSystemEMailAddress('owner@example.com');
 		$lastYear = $this->listService->create(self::OWNER, 'Last year');
-		$user = $service->addUser($lastYear, self::USER);
-		$owner = $service->addUser($lastYear, self::OWNER);
+		$user = $service->addUser($lastYear, self::USER, self::OWNER);
+		$owner = $service->addUser($lastYear, self::OWNER, self::OWNER);
 		$carol = $service->addGuest($lastYear, 'Carol', 'carol@example.com');
 		$dave = $service->addGuest($lastYear, 'Dave', 'dave@example.com');
 
-		$matchingUser = $service->addUser($this->list, self::USER);
+		$matchingUser = $service->addUser($this->list, self::USER, self::OWNER);
 		$ownerAsGuest = $service->addGuest($this->list, 'The owner', 'Owner@Example.com');
 		$matchingCarol = $service->addGuest($this->list, 'Caroline', 'CAROL@example.com');
 		$service->addGuest($this->list, 'Erin', 'erin@example.com');
@@ -363,13 +376,13 @@ final class ParticipantServiceTest extends TestCase {
 		$this->user->setSystemEMailAddress('bob@example.com');
 		$lastYear = $this->listService->create(self::OWNER, 'Last year');
 		// The user and a guest with the email address of the user are the same person in the other list
-		$service->addUser($lastYear, self::USER);
+		$service->addUser($lastYear, self::USER, self::OWNER);
 		$service->addGuest($lastYear, 'Bob', 'bob@example.com');
 		$carol = $service->addGuest($lastYear, 'Carol', 'carol@example.com');
 
-		$service->addUser($this->list, self::USER);
+		$service->addUser($this->list, self::USER, self::OWNER);
 		// Two participants with the email address of carol
-		$service->addUser($this->list, self::OWNER);
+		$service->addUser($this->list, self::OWNER, self::OWNER);
 		$this->owner->setSystemEMailAddress('carol@example.com');
 		$service->addGuest($this->list, 'Carol', 'carol@example.com');
 

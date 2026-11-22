@@ -6,6 +6,9 @@
 /** A list of participants who give each other gifts, see `lib/ResponseDefinitions.php` */
 export interface ISecretSantaList {
 	id: string
+	/** The user who created the list, only they can delete and share it. Null if they were deleted while the list was shared. */
+	owner: string | null
+	ownerDisplayName: string | null
 	name: string
 	/** Display name of the sender of the emails, the display name of the owner if null */
 	senderName: string | null
@@ -51,8 +54,14 @@ export interface IDraw {
 	notifications: INotification[]
 }
 
-/** A user found by the autocomplete API of the server */
-export interface IUserSearchResult {
+/** The list is shared with a group, all members of the group can change the list */
+export interface IShare {
+	groupId: string
+	displayName: string
+}
+
+/** A user or group found by the autocomplete API of the server */
+export interface IAutocompleteResult {
 	id: string
 	label: string
 	subline?: string

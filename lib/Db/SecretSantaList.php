@@ -18,8 +18,8 @@ use OCP\DB\Types;
  * @psalm-suppress PropertyNotSetInConstructor Properties are populated by the mapper
  * @psalm-suppress PossiblyUnusedProperty Properties are accessed through the magic getters and setters
  *
- * @method string getOwner()
- * @method void setOwner(string $value)
+ * @method ?string getOwner()
+ * @method void setOwner(?string $value)
  * @method string getName()
  * @method void setName(string $value)
  * @method ?string getSenderName()
@@ -36,8 +36,8 @@ use OCP\DB\Types;
 final class SecretSantaList extends SnowflakeAwareEntity {
 
 	/**
-	 * The user who organizes the list
-	 * @var string
+	 * The user who organizes the list, null if the owner was deleted while the list was shared
+	 * @var ?string
 	 */
 	protected $owner;
 
