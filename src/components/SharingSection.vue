@@ -49,7 +49,9 @@ watch(() => props.list.id, async (listId) => {
 		}
 	} catch (e) {
 		logger.error('Failed to load the shares', { error: e })
-		error.value = t('secret_santa', 'Could not load the groups the list is shared with.')
+		if (listId === props.list.id) {
+			error.value = t('secret_santa', 'Could not load the groups the list is shared with.')
+		}
 	}
 }, { immediate: true })
 
