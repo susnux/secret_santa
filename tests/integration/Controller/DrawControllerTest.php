@@ -99,7 +99,8 @@ final class DrawControllerTest extends IntegrationTestCase {
 		sort($expectedIds);
 		$this->assertSame($expectedIds, $participantIds);
 		foreach ($draw['notifications'] as $notification) {
-			$this->assertSame(['participantId', 'notifiedAt'], array_keys($notification), 'The partners are never returned');
+			$this->assertSame(['participantId', 'notifiedAt', 'emailChanged'], array_keys($notification), 'The partners are never returned');
+			$this->assertFalse($notification['emailChanged']);
 		}
 
 		$this->assertSame([$draw], $this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'GET', 'api/v1/lists/' . $this->listId . '/draws')));
@@ -166,6 +167,37 @@ final class DrawControllerTest extends IntegrationTestCase {
 		$partners = $this->getSentPartnersOf('dave');
 		$this->assertCount(2, $partners);
 		$this->assertSame($partners[0], $partners[1], 'The same partner is sent again');
+	}
+
+	public function testNotifyParticipantAtAChangedAddress(): void {
+		$this->addGuests(['carol', 'dave', 'erin']);
+		$draw = $this->draw();
+		$this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'PUT', 'api/v1/lists/' . $this->listId . '/participants/' . $this->participants['dave'], [
+			RequestOptions::JSON => ['displayName' => 'dave', 'email' => $this->mailPrefix . 'mallory@example.com'],
+		]));
+
+		$draws = $this->assertOcsResponse(200, $this->ocsRequest($this->alice, 'GET', 'api/v1/lists/' . $this->listId . '/draws'));
+		$notifications = array_column($draws[0]['notifications'], null, 'participantId');
+		$dave = $notifications[$this->participants['dave']];
+		$this->assertSame($dave['notifiedAt'] !== null, $dave['emailChanged'], 'The address changed if the email was sent to the previous one');
+		$this->assertFalse($notifications[$this->participants['carol']]['emailChanged']);
+
+		$response = $this->ocsRequest($this->alice, 'POST', 'api/v1/lists/' . $this->listId . '/draws/' . $draw['id'] . '/participants/' . $this->participants['dave'] . '/notify');
+		if (getenv('MAILHOG_URL') === false) {
+			$this->assertContains($response->getStatusCode(), [200, 503]);
+			return;
+		}
+		$updated = $this->assertOcsResponse(200, $response);
+		$this->assertFalse(array_column($updated['notifications'], 'emailChanged', 'participantId')[$this->participants['dave']]);
+
+		$previous = $this->getMails($this->mailPrefix . 'dave@example.com');
+		$this->assertCount(2, $previous, 'The previous address got the email of the draw and the notice');
+		$this->assertStringContainsString('Your Secret Santa email is sent to a different address', $previous[1]);
+		$this->assertStringContainsString($this->alice, $previous[1]);
+		$this->assertStringNotContainsString('PARTNER', $previous[1]);
+		$this->assertStringNotContainsString('mallory', $previous[1]);
+		$this->assertSame(1, preg_match('/^PARTNER: ([a-z]+)\r?$/m', $previous[0], $matches));
+		$this->assertSame([$matches[1]], $this->getSentPartnersOf('mallory'), 'The new address gets the same partner');
 	}
 
 	public function testDrawIsRefusedIfItIsTheOnlyValidDraw(): void {

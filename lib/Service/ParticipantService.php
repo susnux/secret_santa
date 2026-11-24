@@ -239,7 +239,7 @@ final class ParticipantService {
 	/**
 	 * The email address of a guest or of the account of a user, an empty string if there is none
 	 */
-	private function getEmail(Participant $participant): string {
+	public function getEmail(Participant $participant): string {
 		$userId = $participant->getUserId();
 		if ($userId === null) {
 			return $participant->getEmail() ?? '';
@@ -247,7 +247,10 @@ final class ParticipantService {
 		return $this->userManager->get($userId)?->getEMailAddress() ?? '';
 	}
 
-	private static function normalizeEmail(string $email): string {
+	/**
+	 * Normalize an email address to compare it with others
+	 */
+	public static function normalizeEmail(string $email): string {
 		return mb_strtolower(trim($email));
 	}
 

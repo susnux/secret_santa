@@ -38,6 +38,27 @@ test.describe('Draw', () => {
 		await expect(secretSantaApp.dialog('Draw the partners?')).toBeHidden()
 	})
 
+	test('asks before sending an email to a changed address', async ({ secretSantaApp }) => {
+		await secretSantaApp.openList(await secretSantaApp.createListWithGuests('Christmas party', GUESTS))
+		await secretSantaApp.draw()
+		await expect(secretSantaApp.notification('Carol')).toContainText('Email sent')
+
+		await secretSantaApp.clickParticipantAction('Carol', 'Edit')
+		await secretSantaApp.fillGuestDialog('Edit guest', 'Carol', 'carol.new@example.com')
+		await secretSantaApp.dialog('Edit guest').getByRole('button', { name: 'Save' }).click()
+
+		await expect(secretSantaApp.notification('Carol')).toContainText('Email address changed')
+		await expect(secretSantaApp.notification('Alice')).not.toContainText('Email address changed')
+		await secretSantaApp.notification('Carol').getByRole('button', { name: 'Send the email to Carol again' }).click()
+		const dialog = secretSantaApp.dialog('Send the email to the new address?')
+		await expect(dialog).toContainText('The email address of Carol changed since the email was sent.')
+		await dialog.getByRole('button', { name: 'Send email' }).click()
+
+		await expect(dialog).toBeHidden()
+		await expect(secretSantaApp.notification('Carol')).toContainText('Email sent')
+		await expect(secretSantaApp.notification('Carol')).not.toContainText('Email address changed')
+	})
+
 	test('does not draw without confirmation', async ({ secretSantaApp }) => {
 		await secretSantaApp.openList(await secretSantaApp.createListWithGuests('Christmas party', GUESTS))
 

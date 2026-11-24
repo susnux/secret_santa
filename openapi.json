@@ -114,7 +114,8 @@
                 "type": "object",
                 "required": [
                     "participantId",
-                    "notifiedAt"
+                    "notifiedAt",
+                    "emailChanged"
                 ],
                 "properties": {
                     "participantId": {
@@ -124,6 +125,9 @@
                         "type": "integer",
                         "format": "int64",
                         "nullable": true
+                    },
+                    "emailChanged": {
+                        "type": "boolean"
                     }
                 }
             },
@@ -486,7 +490,7 @@
             "post": {
                 "operationId": "draw-notify-participant",
                 "summary": "Send the email with their partner to a participant again",
-                "description": "Only possible for the latest draw of the list, if it is not outdated.",
+                "description": "Only possible for the latest draw of the list, if it is not outdated. If the email was sent to a different address before, that address gets a notice naming the current user first.",
                 "tags": [
                     "draw"
                 ],
@@ -572,7 +576,7 @@
                         }
                     },
                     "503": {
-                        "description": "The email could not be sent",
+                        "description": "The notice or the email could not be sent",
                         "content": {
                             "application/json": {
                                 "schema": {

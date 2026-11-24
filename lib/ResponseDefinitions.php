@@ -55,10 +55,12 @@ namespace OCA\SecretSanta;
  *
  * `notifiedAt` is the time the email with their partner was sent to the participant `participantId`,
  * as Unix timestamp, or null if it could not be sent.
+ * `emailChanged` is true if the email address of the participant changed since the email was sent.
  *
  * @psalm-type SecretSantaNotification = array{
  *     participantId: string,
  *     notifiedAt: ?int,
+ *     emailChanged: bool,
  * }
  *
  * A draw of the partners of a list, `createdAt` is the time of the draw as Unix timestamp.

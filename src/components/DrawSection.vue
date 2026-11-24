@@ -4,7 +4,7 @@
 -->
 
 <script setup lang="ts">
-import type { IDraw, IParticipant, ISecretSantaList } from '../models/types.ts'
+import type { IDraw, INotification, IParticipant, ISecretSantaList } from '../models/types.ts'
 
 import { mdiAlertCircleOutline, mdiCheckCircleOutline, mdiEmailFastOutline, mdiShuffleVariant } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
@@ -79,6 +79,35 @@ async function draw() {
 }
 
 const notifying = ref<string>()
+/** The participant whose email is sent to a changed address after confirmation */
+const confirmNotify = ref('')
+const confirmNotifyOpen = ref(false)
+
+const confirmNotifyButtons = computed<InstanceType<typeof NcDialog>['buttons']>(() => [
+	{
+		variant: 'tertiary',
+		label: t('secret_santa', 'Cancel'),
+	},
+	{
+		variant: 'primary',
+		label: t('secret_santa', 'Send email'),
+		callback: () => notify(confirmNotify.value),
+	},
+])
+
+/**
+ * Send an email again, after confirmation if the email address changed since it was sent
+ *
+ * @param notification - The notification of the participant
+ */
+function onSendAgain(notification: INotification) {
+	if (notification.emailChanged) {
+		confirmNotify.value = notification.participantId
+		confirmNotifyOpen.value = true
+	} else {
+		notify(notification.participantId)
+	}
+}
 
 /**
  * Send the email of the latest draw to a participant again
@@ -172,12 +201,15 @@ function getName(participantId: string): string {
 					<span v-else :class="$style.drawSection__status">
 						{{ t('secret_santa', 'Email not sent') }}
 					</span>
+					<span v-if="notification.emailChanged" :class="$style.drawSection__changed">
+						{{ t('secret_santa', 'Email address changed') }}
+					</span>
 					<NcButton
 						v-if="!readonly"
 						:aria-label="t('secret_santa', 'Send the email to {name} again', { name: getName(notification.participantId) }, PLAIN_TEXT)"
 						:disabled="notifying !== undefined || latestDraw.outdated"
 						:variant="notification.notifiedAt ? 'tertiary' : 'secondary'"
-						@click="notify(notification.participantId)">
+						@click="onSendAgain(notification)">
 						<template #icon>
 							<NcLoadingIcon v-if="notifying === notification.participantId" />
 							<NcIconSvgWrapper v-else :path="mdiEmailFastOutline" />
@@ -186,6 +218,11 @@ function getName(participantId: string): string {
 					</NcButton>
 				</li>
 			</ul>
+			<NcDialog
+				v-model:open="confirmNotifyOpen"
+				:buttons="confirmNotifyButtons"
+				:name="t('secret_santa', 'Send the email to the new address?')"
+				:message="t('secret_santa', 'The email address of {name} changed since the email was sent. The previous address gets a notice that the email is sent to a different address, naming you as the sender.', { name: getName(confirmNotify) }, PLAIN_TEXT)" />
 		</template>
 
 		<template v-if="previousDraws.length > 0">
@@ -249,6 +286,10 @@ function getName(participantId: string): string {
 
 .drawSection__status {
 	color: var(--color-text-maxcontrast);
+}
+
+.drawSection__changed {
+	color: var(--color-warning-text, var(--color-warning));
 }
 
 .drawSection__success {

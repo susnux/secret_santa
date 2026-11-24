@@ -12,6 +12,7 @@ namespace OCA\SecretSanta\Service;
 use OCA\SecretSanta\Db\SecretSantaList;
 use OCP\IL10N;
 use OCP\IUserManager;
+use OCP\Mail\IEMailTemplate;
 use OCP\Mail\IMailer;
 use OCP\Util;
 use RuntimeException;
@@ -40,9 +41,10 @@ final class NotificationService {
 	 * The email is sent from the default address of the instance with the sender name of the list,
 	 * replies go to the owner of the list if they have an email address.
 	 *
+	 * @param bool $sentElsewhere If the email was sent to a different address of the giver before
 	 * @throws RuntimeException If the email could not be sent
 	 */
-	public function send(SecretSantaList $list, Recipient $giver, Recipient $receiver): void {
+	public function send(SecretSantaList $list, Recipient $giver, Recipient $receiver, bool $sentElsewhere = false): void {
 		$placeholders = [
 			self::PLACEHOLDER_NAME => $giver->displayName,
 			self::PLACEHOLDER_PARTNER => $receiver->displayName,
@@ -60,7 +62,46 @@ final class NotificationService {
 		foreach ($paragraphs as $paragraph) {
 			$template->addBodyText(nl2br(htmlspecialchars($paragraph), false), $paragraph);
 		}
+		if ($sentElsewhere) {
+			$template->addBodyText($this->l10n->t('This email was sent to a different email address before. If you do not know why, contact the organizer of the Secret Santa.'));
+		}
 
+		$this->sendTemplate($list, $giver, $template);
+	}
+
+	/**
+	 * Tell a participant that their email is sent to a different address, without the partner and the new address.
+	 *
+	 * @param Recipient $previous The participant with the address their email was sent to before
+	 * @param string $actorId The user who sends the email to the different address
+	 * @throws RuntimeException If the email could not be sent
+	 */
+	public function sendAddressChangeNotice(SecretSantaList $list, Recipient $previous, string $actorId): void {
+		$subject = $this->l10n->t('Your Secret Santa email is sent to a different address');
+		$template = $this->mailer->createEMailTemplate('secret_santa.AddressChange', [
+			'list' => $list->getName(),
+		]);
+		$template->setSubject($subject);
+		$template->addHeader();
+		$template->addHeading($subject);
+		$template->addBodyText($this->l10n->t('%1$s is sending your email of the Secret Santa "%2$s", which tells you whom you give a gift to, to a different email address.', [
+			$this->userManager->getDisplayName($actorId) ?? $actorId,
+			$list->getName(),
+		]));
+		$template->addBodyText($this->l10n->t('If you do not know why, contact the organizer of the Secret Santa.'));
+
+		$this->sendTemplate($list, $previous, $template);
+	}
+
+	/**
+	 * Send an email of the list to a participant.
+	 *
+	 * The email is sent from the default address of the instance with the sender name of the list,
+	 * replies go to the owner of the list if they have an email address.
+	 *
+	 * @throws RuntimeException If the email could not be sent
+	 */
+	private function sendTemplate(SecretSantaList $list, Recipient $to, IEMailTemplate $template): void {
 		$ownerId = $list->getOwner();
 		$owner = $ownerId === null ? null : $this->userManager->get($ownerId);
 		// TRANSLATORS Sender of the emails of lists whose organizer was deleted
@@ -75,7 +116,7 @@ final class NotificationService {
 		} else {
 			$template->addFooter();
 		}
-		$message->setTo([$giver->email => $giver->displayName]);
+		$message->setTo([$to->email => $to->displayName]);
 		$message->useTemplate($template);
 
 		try {

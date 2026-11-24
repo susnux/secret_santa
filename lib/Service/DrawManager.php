@@ -97,7 +97,7 @@ final class DrawManager {
 		foreach ($pairings as $pairing) {
 			try {
 				$this->notificationService->send($list, $recipients[$pairing->giverId], $recipients[$pairing->receiverId]);
-				$this->pairingMapper->setNotified($draw, $pairing->giverId, $this->timeFactory->getTime());
+				$this->pairingMapper->setNotified($draw, $pairing->giverId, $this->timeFactory->getTime(), $recipients[$pairing->giverId]->email);
 			} catch (RuntimeException $error) {
 				$this->logger->error('Could not send the email of a draw to a participant.', ['exception' => $error]);
 			}
@@ -108,11 +108,15 @@ final class DrawManager {
 	/**
 	 * Send the email with their partner to a participant of the latest draw again.
 	 *
+	 * If the email was sent to a different address before, that address gets a notice first,
+	 * so nobody can redirect the email of a participant unnoticed. The email is not sent if the notice fails.
+	 *
+	 * @param string $actorId The user who sends the email, named in the notice
 	 * @throws InvalidArgumentException If the draw is not the latest draw of the list, it is outdated or the participant did not take part in it
 	 * @throws InvalidInputException If the participant or their partner has no email address
-	 * @throws RuntimeException If the email could not be sent
+	 * @throws RuntimeException If the notice or the email could not be sent
 	 */
-	public function notify(SecretSantaList $list, Draw $draw, Participant $giver): void {
+	public function notify(SecretSantaList $list, Draw $draw, Participant $giver, string $actorId): void {
 		if ($this->drawMapper->getLatestDraw($list)?->getId() !== $draw->getId()) {
 			throw new InvalidArgumentException('Only the emails of the latest draw can be sent again.');
 		}
@@ -120,7 +124,7 @@ final class DrawManager {
 		$pairings = $this->pairingMapper->getPairings($draw);
 		// The same error for all participants, so it does not reveal whose partner was removed
 		$outdated = new InvalidArgumentException('Participants of the draw were removed, the partners need to be drawn again.');
-		if ($this->isOutdated($list, $pairings)) {
+		if ($this->isOutdated($pairings, $this->participantService->getParticipants($list))) {
 			throw $outdated;
 		}
 		$pairing = $this->findPairing($pairings, $giver);
@@ -129,8 +133,16 @@ final class DrawManager {
 		} catch (DoesNotExistException) {
 			throw $outdated;
 		}
-		$this->notificationService->send($list, $this->participantService->getRecipient($giver), $this->participantService->getRecipient($receiver));
-		$this->pairingMapper->setNotified($draw, $giver->getId(), $this->timeFactory->getTime());
+		$recipient = $this->participantService->getRecipient($giver);
+		$partner = $this->participantService->getRecipient($receiver);
+
+		$previousEmail = $pairing->notifiedEmail;
+		$sentElsewhere = $previousEmail !== null && !self::isSameEmail($previousEmail, $recipient->email);
+		if ($sentElsewhere) {
+			$this->notificationService->sendAddressChangeNotice($list, new Recipient($recipient->displayName, $previousEmail), $actorId);
+		}
+		$this->notificationService->send($list, $recipient, $partner, $sentElsewhere);
+		$this->pairingMapper->setNotified($draw, $giver->getId(), $this->timeFactory->getTime(), $recipient->email);
 	}
 
 	/**
@@ -138,13 +150,15 @@ final class DrawManager {
 	 */
 	public function serialize(SecretSantaList $list, Draw $draw): array {
 		$pairings = $this->pairingMapper->getPairings($draw);
+		$participants = $this->participantService->getParticipants($list);
 		return [
 			'id' => $draw->getId(),
 			'createdAt' => $draw->getCreatedAt()?->getTimestamp() ?? 0,
-			'outdated' => $this->isOutdated($list, $pairings),
-			'notifications' => array_map(static fn (Pairing $pairing): array => [
+			'outdated' => $this->isOutdated($pairings, $participants),
+			'notifications' => array_map(fn (Pairing $pairing): array => [
 				'participantId' => $pairing->giverId,
 				'notifiedAt' => $pairing->notifiedAt,
+				'emailChanged' => $this->isEmailChanged($pairing, $participants),
 			], $pairings),
 		];
 	}
@@ -153,15 +167,37 @@ final class DrawManager {
 	 * Check if the partner of a participant of the draw was removed, so the participant has no partner anymore.
 	 *
 	 * @param list<Pairing> $pairings The pairings of the draw
+	 * @param list<Participant> $participants The participants of the list
 	 */
-	private function isOutdated(SecretSantaList $list, array $pairings): bool {
-		$participantIds = array_map(static fn (Participant $participant): string => $participant->getId(), $this->participantService->getParticipants($list));
+	private function isOutdated(array $pairings, array $participants): bool {
+		$participantIds = array_map(static fn (Participant $participant): string => $participant->getId(), $participants);
 		foreach ($pairings as $pairing) {
 			if (!in_array($pairing->receiverId, $participantIds, true)) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Check if the email address of the giver changed since their email was sent.
+	 *
+	 * @param list<Participant> $participants The participants of the list
+	 */
+	private function isEmailChanged(Pairing $pairing, array $participants): bool {
+		if ($pairing->notifiedEmail === null) {
+			return false;
+		}
+		foreach ($participants as $participant) {
+			if ($participant->getId() === $pairing->giverId) {
+				return !self::isSameEmail($pairing->notifiedEmail, $this->participantService->getEmail($participant));
+			}
+		}
+		return false;
+	}
+
+	private static function isSameEmail(string $email, string $other): bool {
+		return ParticipantService::normalizeEmail($email) === ParticipantService::normalizeEmail($other);
 	}
 
 	/**

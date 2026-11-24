@@ -16,11 +16,13 @@ final readonly class Pairing {
 
 	/**
 	 * @param ?int $notifiedAt Unix timestamp of the email sent to the giver, null if it was not sent
+	 * @param ?string $notifiedEmail Email address the email was last sent to, null if it was not sent or is unknown
 	 */
 	public function __construct(
 		public string $giverId,
 		public string $receiverId,
 		public ?int $notifiedAt = null,
+		public ?string $notifiedEmail = null,
 	) {
 	}
 }

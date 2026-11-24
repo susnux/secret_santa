@@ -29,7 +29,7 @@ function createTestDraw(id: string, notNotified: string[] = []): IDraw {
 		id,
 		createdAt: drawnAt,
 		outdated: false,
-		notifications: participants.map(({ id }) => ({ participantId: id, notifiedAt: notNotified.includes(id) ? null : drawnAt + 1 })),
+		notifications: participants.map(({ id }) => ({ participantId: id, notifiedAt: notNotified.includes(id) ? null : drawnAt + 1, emailChanged: false })),
 	}
 }
 
@@ -146,6 +146,38 @@ describe('DrawSection', () => {
 
 		expect(notifyParticipant).toHaveBeenCalledWith(list.id, '21', '2')
 		expect(wrapper.emitted('update:draws')).toEqual([[[updated, createTestDraw('20')]]])
+	})
+
+	it('sends an email to a changed address after confirmation', async () => {
+		const draw = createTestDraw('21')
+		draw.notifications[1]!.emailChanged = true
+		const updated = createTestDraw('21')
+		notifyParticipant.mockResolvedValue(updated)
+		const wrapper = await mountSection({ draws: [draw] })
+
+		const rows = wrapper.findAll('[data-participant]')
+		expect(rows[0]!.text()).not.toContain('Email address changed')
+		expect(rows[1]!.text()).toContain('Email address changed')
+		await rows[1]!.findComponent(NcButton).trigger('click')
+		await flushPromises()
+		expect(document.body.textContent).toContain('The email address of Bob changed since the email was sent.')
+		expect(notifyParticipant).not.toHaveBeenCalled()
+		await clickButton('Send email')
+
+		expect(notifyParticipant).toHaveBeenCalledWith(list.id, '21', '2')
+		expect(wrapper.emitted('update:draws')).toEqual([[[updated]]])
+	})
+
+	it('does not send an email to a changed address without confirmation', async () => {
+		const draw = createTestDraw('21')
+		draw.notifications[1]!.emailChanged = true
+		const wrapper = await mountSection({ draws: [draw] })
+
+		await wrapper.findAll('[data-participant]')[1]!.findComponent(NcButton).trigger('click')
+		await flushPromises()
+		await clickButton('Cancel')
+
+		expect(notifyParticipant).not.toHaveBeenCalled()
 	})
 
 	it('asks to draw again if the latest draw is outdated', async () => {

@@ -42,6 +42,8 @@ export interface INotification {
 	participantId: string
 	/** Unix timestamp of the email with the partner, null if it could not be sent */
 	notifiedAt: number | null
+	/** The email address of the participant changed since the email was sent */
+	emailChanged: boolean
 }
 
 /** A draw of the partners, the drawn partners are never sent to the browser */
