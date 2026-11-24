@@ -6,14 +6,16 @@
 <script setup lang="ts">
 import type { IAutocompleteResult, ISecretSantaList, IShare } from '../models/types.ts'
 
-import { mdiClose } from '@mdi/js'
+import { mdiAccountKeyOutline, mdiClose } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
+import { spawnDialog } from '@nextcloud/vue/functions/dialog'
 import { computed, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcListItemIcon from '@nextcloud/vue/components/NcListItemIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
+import TakeOverListDialog from './TakeOverListDialog.vue'
 import { fetchShares, searchGroups, shareList, unshareList } from '../api/index.ts'
 import { getOcsErrorMessage } from '../utils/errors.ts'
 import { PLAIN_TEXT } from '../utils/l10n.ts'
@@ -22,6 +24,10 @@ import logger from '../utils/logger.ts'
 
 const props = defineProps<{
 	list: ISecretSantaList
+}>()
+
+const emit = defineEmits<{
+	'update:list': [list: ISecretSantaList]
 }>()
 
 const shares = ref<IShare[]>([])
@@ -36,8 +42,18 @@ const description = computed(() => {
 	if (props.list.ownerDisplayName !== null) {
 		return t('secret_santa', 'Shared by {owner}. All members of the groups can change the list and draw the partners. Only {owner} can delete and share the list.', { owner: props.list.ownerDisplayName }, PLAIN_TEXT)
 	}
-	return t('secret_santa', 'The owner of this list was deleted. All members of the groups can still change the list and draw the partners.')
+	return t('secret_santa', 'The owner of this list was deleted. All members of the groups can still change the list and draw the partners. Take over the list to delete and share it.')
 })
+
+/**
+ * Ask to take over the list and become its owner
+ */
+async function takeOver() {
+	const list = await spawnDialog(TakeOverListDialog, { list: props.list })
+	if (list) {
+		emit('update:list', list)
+	}
+}
 
 watch(() => props.list.id, async (listId) => {
 	shares.value = []
@@ -137,6 +153,12 @@ async function unshare(share: IShare) {
 		<p :class="$style.sharingSection__description">
 			{{ description }}
 		</p>
+		<NcButton v-if="list.owner === null" variant="secondary" @click="takeOver">
+			<template #icon>
+				<NcIconSvgWrapper :path="mdiAccountKeyOutline" />
+			</template>
+			{{ t('secret_santa', 'Take over list') }}
+		</NcButton>
 		<NcSelect
 			v-if="isOwner"
 			:key="groupSelectKey"

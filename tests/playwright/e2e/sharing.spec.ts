@@ -72,4 +72,38 @@ test.describe('Sharing', () => {
 			await memberContext.close()
 		}
 	})
+
+	test('members take over a list whose owner was deleted', async ({ secretSantaApp, browser, user }) => {
+		const listId = await secretSantaApp.createListWithGuests('Orphaned Christmas', ['Alice', 'Bob'])
+		await secretSantaApp.api('POST', `lists/${listId}/shares`, { groupId })
+		await runOcc(['user:delete', user.userId])
+
+		const memberContext = await browser.newContext({ baseURL: test.info().project.use.baseURL })
+		try {
+			const memberPage = await memberContext.newPage()
+			await retryWithBackoff('Logging in as member', () => login(memberPage.request, member))
+			const memberApp = new SecretSantaAppPage(memberPage)
+			await memberApp.openList(listId)
+			await expect(memberApp.section('Sharing')).toContainText('The owner of this list was deleted.')
+			await expect(memberApp.section('Sharing').getByRole('combobox')).toHaveCount(0)
+
+			await memberApp.section('Sharing').getByRole('button', { name: 'Take over list' }).click()
+			await expect(memberApp.dialog('Take over list')).toContainText('Take over the list Orphaned Christmas?')
+			await memberApp.dialog('Take over list').getByRole('button', { name: 'Take over list' }).click()
+			await expect(memberApp.dialog('Take over list')).toHaveCount(0)
+
+			await expect(memberApp.section('Sharing')).toContainText('Only you can delete and share the list.')
+			await expect(memberApp.section('Sharing').getByRole('button', { name: 'Take over list' })).toHaveCount(0)
+			await expect(memberApp.section('Sharing').getByRole('combobox')).toBeVisible()
+			await expect(memberApp.listNavigationItem('Orphaned Christmas').getByRole('link')).not.toHaveAttribute('title', 'Shared with you')
+
+			await memberApp.section('Sharing').getByRole('button', { name: `Stop sharing with ${groupId}` }).click()
+			await expect(memberApp.section('Sharing')).toContainText('The list is not shared.')
+			await memberApp.clickListAction('Orphaned Christmas', 'Delete')
+			await memberApp.dialog('Delete list').getByRole('button', { name: 'Delete list' }).click()
+			await expect(memberApp.listNavigationItem('Orphaned Christmas')).toHaveCount(0)
+		} finally {
+			await memberContext.close()
+		}
+	})
 })

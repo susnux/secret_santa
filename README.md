@@ -25,7 +25,7 @@ Administrators can limit the app to some groups in the app management.
 
 Lists can be shared with groups, following the sharing settings of the server (e.g. sharing only with the own groups).
 All members of the groups can change the list and draw the partners, only the owner can delete and share it.
-If the owner is deleted, their shared lists are kept without owner.
+If the owner is deleted, their shared lists are kept without owner until a member of the groups takes them over.
 
 ## Development
 

@@ -55,6 +55,20 @@ final class SecretSantaListMapper extends QBMapper {
 	}
 
 	/**
+	 * Set the owner of a list if it has no owner.
+	 *
+	 * @return bool False if the list does not exist or already has an owner
+	 */
+	public function setOwnerIfNone(string $id, string $owner): bool {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->tableName)
+			->set('owner', $qb->createNamedParameter($owner))
+			->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
+			->andWhere($qb->expr()->isNull('owner'));
+		return $qb->executeStatement() === 1;
+	}
+
+	/**
 	 * @param list<string> $ids
 	 * @return list<SecretSantaList> The existing lists of the ids, in no particular order
 	 */
