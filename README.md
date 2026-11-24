@@ -17,6 +17,8 @@ Organize a Secret Santa gift exchange ("Wichteln") in Nextcloud.
 - Archive the lists of past gift exchanges, they are hidden from the navigation and can no longer be changed
 - Share lists with groups to organize the gift exchange together
 
+The [user guide](docs/user-guide.md) explains how to organize a gift exchange step by step.
+
 Emails are sent through the mail server configured in the Nextcloud administration settings.
 Every user who can use the app can send emails with their own text to the participants, including guests.
 Administrators can limit the app to some groups in the app management.
