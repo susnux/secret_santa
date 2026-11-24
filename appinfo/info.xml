@@ -23,6 +23,7 @@
 	<author mail="opensource@fthiessen.de" homepage="https://github.com/susnux/secret_santa">Ferdinand Thiessen</author>
 	<namespace>SecretSanta</namespace>
 	<category>organization</category>
+	<category>games</category>
 	<website>https://github.com/susnux/secret_santa</website>
 	<bugs>https://github.com/susnux/secret_santa/issues</bugs>
 	<repository type="git">https://github.com/susnux/secret_santa.git</repository>
