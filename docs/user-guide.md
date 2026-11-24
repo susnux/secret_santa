@@ -133,6 +133,8 @@ Only the owner of the list can delete and share it.
 Stop sharing with a group with the button next to the group.
 
 If the owner of a shared list is deleted, the list is kept for the members of the groups.
+To delete or share such a list, a member clicks **Take over list** in the **Sharing** section and becomes its new owner.
+The emails are then sent with the name of the new owner, unless the list has its own sender name, and replies go to their email address.
 
 ## Archive a list
 

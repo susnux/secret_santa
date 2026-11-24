@@ -160,6 +160,34 @@ final class ListController extends BaseOCSController {
 	}
 
 	/**
+	 * Take over a list without owner
+	 *
+	 * The current user becomes the owner of a shared list whose owner was deleted,
+	 * so they can delete and share it.
+	 *
+	 * @param string $listId The id of the list
+	 * @return DataResponse<Http::STATUS_OK, SecretSantaList, array{}>
+	 * @throws OCSForbiddenException The list already has an owner
+	 * @throws OCSNotFoundException List not found or not accessible by the current user
+	 *
+	 * 200: List taken over
+	 */
+	#[NoAdminRequired]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/lists/{listId}/owner', requirements: ['listId' => '\d+'])]
+	public function takeOverList(string $listId): DataResponse {
+		$list = $this->findList($listId);
+		if ($this->userId === null) {
+			throw new OCSForbiddenException();
+		}
+		try {
+			$list = $this->listService->takeOver($list, $this->userId);
+		} catch (InvalidInputException $error) {
+			throw new OCSForbiddenException($error->getHint());
+		}
+		return new DataResponse($this->listService->serialize($list));
+	}
+
+	/**
 	 * Delete a list including its participants
 	 *
 	 * Only the owner of the list can delete it.

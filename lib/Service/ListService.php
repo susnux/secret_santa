@@ -230,6 +230,18 @@ final class ListService {
 	}
 
 	/**
+	 * Make the user the owner of a list without owner.
+	 *
+	 * @throws InvalidInputException If the list already has an owner
+	 */
+	public function takeOver(SecretSantaList $list, string $userId): SecretSantaList {
+		if (!$this->listMapper->setOwnerIfNone($list->getId(), $userId)) {
+			throw new InvalidInputException('The list already has an owner.', $this->l10n->t('The list already has an owner.'));
+		}
+		return $this->listMapper->getList($list->getId());
+	}
+
+	/**
 	 * @return SecretSantaListData
 	 */
 	public function serialize(SecretSantaList $list): array {

@@ -216,6 +216,35 @@ final class ListServiceTest extends TestCase {
 		}
 	}
 
+	public function testTakeOver(): void {
+		$list = $this->service->create(self::USER_ID, 'Shared');
+		$this->shareMapper->insert($list, self::GROUP);
+		$this->service->removeOwner(self::USER_ID);
+		$orphan = $this->listMapper->getList($list->getId());
+
+		$taken = $this->service->takeOver($orphan, self::OTHER_USER_ID);
+
+		$this->assertSame(self::OTHER_USER_ID, $taken->getOwner());
+		$this->assertSame(self::OTHER_USER_ID, $this->listMapper->getList($list->getId())->getOwner());
+		$this->assertCount(1, $this->shareMapper->getShares($taken));
+	}
+
+	public function testTakeOverRejectsListsWithOwner(): void {
+		$list = $this->service->create(self::USER_ID, 'Shared');
+		$this->shareMapper->insert($list, self::GROUP);
+		$this->service->removeOwner(self::USER_ID);
+		$orphan = $this->listMapper->getList($list->getId());
+		$this->service->takeOver($orphan, self::OTHER_USER_ID);
+
+		try {
+			$this->service->takeOver($orphan, self::USER_ID);
+			$this->fail('Expected an exception');
+		} catch (InvalidInputException $error) {
+			$this->assertSame('translated: The list already has an owner.', $error->getHint());
+		}
+		$this->assertSame(self::OTHER_USER_ID, $this->listMapper->getList($list->getId())->getOwner());
+	}
+
 	public function testUpdateOnlyChangesGivenValues(): void {
 		$list = $this->service->create(self::USER_ID, 'Christmas');
 		$body = $list->getMailBody();

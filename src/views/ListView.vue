@@ -137,7 +137,7 @@ async function unarchive() {
 			v-model:draws="draws"
 			:list="list"
 			:participants="participants" />
-		<SharingSection :list="list" />
+		<SharingSection :list="list" @update:list="store.setList" />
 	</main>
 </template>
 

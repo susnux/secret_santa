@@ -208,6 +208,15 @@ export function notifyParticipant(listId: string, drawId: string, participantId:
 }
 
 /**
+ * Become the owner of a list whose owner was deleted
+ *
+ * @param listId - The id of the list
+ */
+export function takeOverList(listId: string): Promise<ISecretSantaList> {
+	return ocsData(axios.post(apiUrl('lists/{listId}/owner', { listId })))
+}
+
+/**
  * Get the groups a list is shared with
  *
  * @param listId - The id of the list

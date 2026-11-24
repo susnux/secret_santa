@@ -7,7 +7,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import SharingSection from './SharingSection.vue'
-import { createOcsError, createTestList } from '../test-utils.ts'
+import TakeOverListDialog from './TakeOverListDialog.vue'
+import { clickButton, createOcsError, createTestList } from '../test-utils.ts'
 
 const api = vi.hoisted(() => ({
 	fetchShares: vi.fn(),
@@ -16,6 +17,8 @@ const api = vi.hoisted(() => ({
 	unshareList: vi.fn(),
 }))
 vi.mock('../api/index.ts', () => api)
+const { spawnDialog } = vi.hoisted(() => ({ spawnDialog: vi.fn() }))
+vi.mock('@nextcloud/vue/functions/dialog', () => ({ spawnDialog }))
 vi.mock('@nextcloud/auth', () => ({ getCurrentUser: () => ({ uid: 'admin', displayName: 'Olivia Owner', isAdmin: false }) }))
 
 const list = createTestList()
@@ -36,6 +39,7 @@ describe('SharingSection', () => {
 	beforeEach(() => {
 		vi.useFakeTimers()
 		Object.values(api).forEach((mock) => mock.mockReset())
+		spawnDialog.mockReset()
 		api.fetchShares.mockResolvedValue([family])
 	})
 
@@ -50,6 +54,7 @@ describe('SharingSection', () => {
 		expect(api.fetchShares).toHaveBeenCalledWith(list.id)
 		expect(wrapper.find('[data-group="family"]').text()).toContain('Family')
 		expect(wrapper.text()).toContain('Only you can delete and share the list.')
+		expect(wrapper.text()).not.toContain('Take over list')
 	})
 
 	it('shows that the list is not shared', async () => {
@@ -115,6 +120,7 @@ describe('SharingSection', () => {
 		expect(wrapper.find('button[aria-label="Stop sharing with Family"]').exists()).toBe(false)
 		expect(wrapper.text()).toContain('Shared by Bob.')
 		expect(wrapper.text()).toContain('Only Bob can delete and share the list.')
+		expect(wrapper.text()).not.toContain('Take over list')
 	})
 
 	it('explains lists whose owner was deleted', async () => {
@@ -122,6 +128,27 @@ describe('SharingSection', () => {
 
 		expect(wrapper.text()).toContain('The owner of this list was deleted.')
 		expect(wrapper.findComponent(NcSelect).exists()).toBe(false)
+	})
+
+	it('takes over lists whose owner was deleted', async () => {
+		const orphan = createTestList({ owner: null, ownerDisplayName: null })
+		const takenOver = createTestList()
+		spawnDialog.mockResolvedValue(takenOver)
+		const wrapper = await mountSection(orphan)
+
+		await clickButton('Take over list')
+
+		expect(spawnDialog).toHaveBeenCalledWith(TakeOverListDialog, { list: orphan })
+		expect(wrapper.emitted('update:list')).toEqual([[takenOver]])
+	})
+
+	it('keeps the list if taking over was cancelled', async () => {
+		spawnDialog.mockResolvedValue(undefined)
+		const wrapper = await mountSection(createTestList({ owner: null, ownerDisplayName: null }))
+
+		await clickButton('Take over list')
+
+		expect(wrapper.emitted('update:list')).toBeUndefined()
 	})
 
 	it('shows an error if the shares could not be loaded', async () => {

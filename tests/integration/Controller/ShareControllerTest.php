@@ -149,6 +149,36 @@ final class ShareControllerTest extends IntegrationTestCase {
 		$this->assertOcsResponse(403, $this->ocsRequest($this->member, 'DELETE', 'api/v1/lists/' . $this->listId));
 	}
 
+	public function testMembersCanTakeOverListsWithoutOwner(): void {
+		$otherMember = $this->createUser();
+		$otherGroup = $this->createGroup([$otherMember]);
+		$this->assertOcsResponse(201, $this->share($this->group));
+		$this->assertOcsResponse(201, $this->share($otherGroup));
+		$this->deleteUser($this->owner);
+		$path = 'api/v1/lists/' . $this->listId;
+
+		$this->assertOcsResponse(404, $this->ocsRequest($this->outsider, 'POST', $path . '/owner'));
+		$list = $this->assertOcsResponse(200, $this->ocsRequest($this->member, 'POST', $path . '/owner'));
+		$this->assertIsArray($list);
+		$this->assertSame($this->member, $list['owner']);
+		$this->assertSame($this->member, $list['ownerDisplayName']);
+		$this->assertOcsResponse(403, $this->ocsRequest($otherMember, 'POST', $path . '/owner'));
+
+		$this->assertOcsResponse(200, $this->ocsRequest($this->member, 'DELETE', $path . '/shares/' . rawurlencode($otherGroup)));
+		$this->assertSame([], $this->getListIds($otherMember));
+		$this->assertOcsResponse(200, $this->ocsRequest($this->member, 'DELETE', $path));
+		$this->assertSame([], $this->getListIds($this->member));
+	}
+
+	public function testListsWithOwnerCanNotBeTakenOver(): void {
+		$this->assertOcsResponse(201, $this->share($this->group));
+		$path = 'api/v1/lists/' . $this->listId . '/owner';
+
+		$this->assertOcsResponse(403, $this->ocsRequest($this->member, 'POST', $path));
+		$this->assertOcsResponse(403, $this->ocsRequest($this->owner, 'POST', $path));
+		$this->assertOcsResponse(404, $this->ocsRequest($this->outsider, 'POST', $path));
+	}
+
 	public function testDeletingTheGroupRemovesTheShare(): void {
 		$this->assertOcsResponse(201, $this->share($this->group));
 
