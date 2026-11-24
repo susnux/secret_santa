@@ -28,6 +28,9 @@
 		"test:integration": "phpunit -c tests/integration/phpunit.xml --colors=always --fail-on-warning --fail-on-risky",
 		"openapi": "generate-spec"
 	},
+	"require": {
+		"ext-mbstring": "*"
+	},
 	"require-dev": {
 		"bamarni/composer-bin-plugin": "^1.8"
 	},
