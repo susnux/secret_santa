@@ -7,6 +7,12 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- Members of a list could change the email address of a guest and send the email of the guest with their partner to themselves unnoticed. When an email is sent again to a different address, the previous address now gets a notice naming who sent it, and the email says that it was sent to a different address before (#9)
+
 ## v0.1.0 - 2026-11-24
 
 ### Added

@@ -110,6 +110,10 @@ If a participant did not receive their email, deleted it, or the email could not
 They get the same partner again.
 
 To send the email to another address, change the email address of the guest (or ask the account owner to change theirs) and click **Send again**.
+The participant is then marked "Email address changed", and the app asks you to confirm sending the email to the new address.
+So that nobody can send the partner of somebody else to themselves unnoticed, the previous address first gets a notice that the email is sent to a different address, naming you.
+The notice contains neither the partner nor the new address.
+The email to the new address says that it was sent to a different address before.
 
 ### Draw again
 

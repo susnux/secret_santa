@@ -98,6 +98,7 @@ final class DrawController extends BaseOCSController {
 	 * Send the email with their partner to a participant again
 	 *
 	 * Only possible for the latest draw of the list, if it is not outdated.
+	 * If the email was sent to a different address before, that address gets a notice naming the current user first.
 	 *
 	 * @param string $listId The id of the list
 	 * @param string $drawId The id of the draw
@@ -107,7 +108,7 @@ final class DrawController extends BaseOCSController {
 	 * @throws OCSNotFoundException List, draw or participant not found or the list is not accessible by the current user
 	 *
 	 * 200: Email sent
-	 * 503: The email could not be sent
+	 * 503: The notice or the email could not be sent
 	 */
 	#[NoAdminRequired]
 	#[UserRateLimit(limit: 20, period: 3600)]
@@ -117,7 +118,7 @@ final class DrawController extends BaseOCSController {
 		$draw = $this->findDraw($list, $drawId);
 		$participant = $this->findParticipant($list, $participantId);
 		try {
-			$this->drawManager->notify($list, $draw, $participant);
+			$this->drawManager->notify($list, $draw, $participant, (string)$this->userId);
 		} catch (InvalidInputException $error) {
 			throw new OCSBadRequestException($error->getHint());
 		} catch (InvalidArgumentException $error) {

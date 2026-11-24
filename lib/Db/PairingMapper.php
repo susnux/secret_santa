@@ -27,7 +27,7 @@ final class PairingMapper {
 	 */
 	public function getPairings(Draw $draw): array {
 		$qb = $this->db->getQueryBuilder();
-		$qb->select('giver_id', 'receiver_id', 'notified_at')
+		$qb->select('giver_id', 'receiver_id', 'notified_at', 'notified_email')
 			->from(self::TABLE_NAME)
 			->where($qb->expr()->eq('draw_id', $qb->createNamedParameter($draw->getId())))
 			->orderBy('giver_id');
@@ -39,6 +39,7 @@ final class PairingMapper {
 				(string)$row['giver_id'],
 				(string)$row['receiver_id'],
 				$row['notified_at'] === null ? null : (int)$row['notified_at'],
+				$row['notified_email'] === null ? null : (string)$row['notified_email'],
 			);
 		}
 		$result->closeCursor();
@@ -54,6 +55,7 @@ final class PairingMapper {
 				'giver_id' => $qb->createNamedParameter($pairing->giverId),
 				'receiver_id' => $qb->createNamedParameter($pairing->receiverId),
 				'notified_at' => $qb->createNamedParameter($pairing->notifiedAt, $pairing->notifiedAt === null ? IQueryBuilder::PARAM_NULL : IQueryBuilder::PARAM_INT),
+				'notified_email' => $qb->createNamedParameter($pairing->notifiedEmail, $pairing->notifiedEmail === null ? IQueryBuilder::PARAM_NULL : IQueryBuilder::PARAM_STR),
 			])
 			->executeStatement();
 	}
@@ -62,11 +64,13 @@ final class PairingMapper {
 	 * Store that the email was sent to the giver
 	 *
 	 * @param int $time Unix timestamp of the email
+	 * @param string $email Email address the email was sent to
 	 */
-	public function setNotified(Draw $draw, string $giverId, int $time): void {
+	public function setNotified(Draw $draw, string $giverId, int $time, string $email): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->update(self::TABLE_NAME)
 			->set('notified_at', $qb->createNamedParameter($time, IQueryBuilder::PARAM_INT))
+			->set('notified_email', $qb->createNamedParameter($email))
 			->where(
 				$qb->expr()->eq('draw_id', $qb->createNamedParameter($draw->getId())),
 				$qb->expr()->eq('giver_id', $qb->createNamedParameter($giverId)),

@@ -12,6 +12,7 @@ namespace OCA\SecretSanta\Tests\Unit\Service;
 use OC\Mail\Message;
 use OCA\SecretSanta\Db\DrawMapper;
 use OCA\SecretSanta\Db\ExclusionMapper;
+use OCA\SecretSanta\Db\Pairing;
 use OCA\SecretSanta\Db\PairingMapper;
 use OCA\SecretSanta\Db\Participant;
 use OCA\SecretSanta\Db\SecretSantaList;
@@ -146,8 +147,15 @@ final class DrawManagerTest extends TestCase {
 		$participantIds = array_map(static fn (Participant $participant): string => $participant->getId(), array_values($this->participants));
 		sort($participantIds);
 		$this->assertSame(
-			array_map(static fn (string $id): array => ['participantId' => $id, 'notifiedAt' => self::TIME], $participantIds),
+			array_map(static fn (string $id): array => ['participantId' => $id, 'notifiedAt' => self::TIME, 'emailChanged' => false], $participantIds),
 			$serialized['notifications'],
+		);
+		$this->assertSame(
+			['alice@example.com', 'bob@example.com', 'carol@example.com', 'dave@example.com'],
+			(static function (array $emails): array {
+				sort($emails);
+				return $emails;
+			})(array_map(static fn (Pairing $pairing): ?string => $pairing->notifiedEmail, Server::get(PairingMapper::class)->getPairings($draw))),
 		);
 		$this->assertSame([$draw->getId()], array_map(static fn ($draw) => $draw->getId(), $this->createManager()->getDraws($this->list)));
 	}
@@ -254,10 +262,71 @@ final class DrawManagerTest extends TestCase {
 		$partnerOfBob = $this->takeSentPartners()['bob'];
 		$this->failingAddresses = [];
 
-		$manager->notify($this->list, $draw, $this->participants['bob']);
+		$manager->notify($this->list, $draw, $this->participants['bob'], self::OWNER);
 
 		$this->assertSame(['bob' => $partnerOfBob], $this->takeSentPartners());
 		$this->assertSame([self::TIME, self::TIME, self::TIME], array_column($manager->serialize($this->list, $draw)['notifications'], 'notifiedAt'));
+	}
+
+	public function testNotifyChangedAddressSendsANoticeToThePreviousAddress(): void {
+		$this->addGuests(['alice', 'bob', 'carol']);
+		$manager = $this->createManager();
+		$draw = $manager->draw($this->list);
+		$partnerOfBob = $this->takeSentPartners()['bob'];
+
+		$this->participantService->updateGuest($this->list, $this->participants['bob'], 'bob', 'mallory@example.com');
+		$this->assertSame([false, true, false], $this->getEmailChanged($manager->serialize($this->list, $draw)));
+		$manager->notify($this->list, $draw, $this->participants['bob'], self::OWNER);
+
+		$this->assertCount(2, $this->messages);
+		[$notice, $email] = $this->messages;
+		$this->assertSame(['bob@example.com' => 'bob'], $notice->getTo(), 'The notice is sent first, to the previous address');
+		$this->assertSame('translated: Your Secret Santa email is sent to a different address', $notice->getSubject());
+		$this->assertStringContainsString('translated: ' . self::OWNER . ' is sending your email of the Secret Santa "Christmas"', $notice->getPlainBody());
+		$this->assertStringNotContainsString('mallory', $notice->getPlainBody(), 'The new address is not sent to the previous one');
+		$this->assertStringNotContainsString($partnerOfBob, $notice->getPlainBody());
+		$this->assertSame(['mallory@example.com' => 'bob'], $email->getTo());
+		$this->assertStringContainsString('translated: This email was sent to a different email address before.', $email->getPlainBody());
+		$this->messages = [$email];
+		$this->assertSame(['bob' => $partnerOfBob], $this->takeSentPartners());
+		$this->assertSame([false, false, false], $this->getEmailChanged($manager->serialize($this->list, $draw)));
+
+		$manager->notify($this->list, $draw, $this->participants['bob'], self::OWNER);
+		$this->assertCount(1, $this->messages, 'No notice if the address did not change since the last email');
+		$this->assertStringNotContainsString('different email address', $this->messages[0]->getPlainBody());
+	}
+
+	public function testNotifyIgnoresTheCaseOfTheAddress(): void {
+		$this->addGuests(['alice', 'bob', 'carol']);
+		$manager = $this->createManager();
+		$draw = $manager->draw($this->list);
+		$this->messages = [];
+
+		$this->participantService->updateGuest($this->list, $this->participants['bob'], 'bob', 'Bob@Example.com');
+		$this->assertSame([false, false, false], $this->getEmailChanged($manager->serialize($this->list, $draw)));
+		$manager->notify($this->list, $draw, $this->participants['bob'], self::OWNER);
+
+		$this->assertCount(1, $this->messages);
+		$this->assertSame(['Bob@Example.com' => 'bob'], $this->messages[0]->getTo());
+		$this->assertStringNotContainsString('different email address', $this->messages[0]->getPlainBody());
+	}
+
+	public function testNotifyChangedAddressIsNotSentIfTheNoticeFails(): void {
+		$this->addGuests(['alice', 'bob', 'carol']);
+		$manager = $this->createManager();
+		$draw = $manager->draw($this->list);
+		$this->messages = [];
+		$this->participantService->updateGuest($this->list, $this->participants['bob'], 'bob', 'mallory@example.com');
+		$this->failingAddresses = ['bob@example.com'];
+
+		try {
+			$manager->notify($this->list, $draw, $this->participants['bob'], self::OWNER);
+			$this->fail('Expected an exception');
+		} catch (\RuntimeException) {
+		}
+
+		$this->assertSame([['bob@example.com' => 'bob']], array_map(static fn (Message $message): array => $message->getTo(), $this->messages));
+		$this->assertSame([false, true, false], $this->getEmailChanged($manager->serialize($this->list, $draw)));
 	}
 
 	public function testNotifyFailure(): void {
@@ -267,7 +336,7 @@ final class DrawManagerTest extends TestCase {
 		$this->failingAddresses = ['bob@example.com'];
 
 		$this->expectException(\RuntimeException::class);
-		$manager->notify($this->list, $draw, $this->participants['bob']);
+		$manager->notify($this->list, $draw, $this->participants['bob'], self::OWNER);
 	}
 
 	public function testNotifyOnlyForTheLatestDraw(): void {
@@ -278,7 +347,7 @@ final class DrawManagerTest extends TestCase {
 
 		$this->expectException(\InvalidArgumentException::class);
 		$this->expectExceptionMessage('Only the emails of the latest draw can be sent again.');
-		$manager->notify($this->list, $first, $this->participants['bob']);
+		$manager->notify($this->list, $first, $this->participants['bob'], self::OWNER);
 	}
 
 	public function testNotifyOnlyForParticipantsOfTheDraw(): void {
@@ -289,7 +358,7 @@ final class DrawManagerTest extends TestCase {
 
 		$this->expectException(\InvalidArgumentException::class);
 		$this->expectExceptionMessage('The participant did not take part in the draw.');
-		$manager->notify($this->list, $draw, $this->participants['dave']);
+		$manager->notify($this->list, $draw, $this->participants['dave'], self::OWNER);
 	}
 
 	public function testDeletingAParticipantMarksTheDrawOutdated(): void {
@@ -309,12 +378,21 @@ final class DrawManagerTest extends TestCase {
 		// Every participant gets the same error, so it does not reveal who drew alice
 		foreach (['bob', 'carol', 'dave'] as $name) {
 			try {
-				$manager->notify($this->list, $draw, $this->participants[$name]);
+				$manager->notify($this->list, $draw, $this->participants[$name], self::OWNER);
 				$this->fail('Expected an exception');
 			} catch (\InvalidArgumentException $error) {
 				$this->assertSame('Participants of the draw were removed, the partners need to be drawn again.', $error->getMessage());
 			}
 		}
+	}
+
+	/**
+	 * @param array{notifications: list<array{participantId: string, emailChanged: bool, ...}>, ...} $draw
+	 * @return list<bool> If the address changed, ordered like alice, bob, carol
+	 */
+	private function getEmailChanged(array $draw): array {
+		$changed = array_column($draw['notifications'], 'emailChanged', 'participantId');
+		return array_map(fn (string $name): bool => $changed[$this->participants[$name]->getId()], ['alice', 'bob', 'carol']);
 	}
 
 	public function testDeletingAListDeletesItsDraws(): void {

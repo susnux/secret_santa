@@ -130,6 +130,29 @@ final class NotificationServiceTest extends TestCase {
 		$this->assertSame('{partner}', $this->messages[0]->getSubject());
 	}
 
+	public function testSendMentionsThatItWasSentElsewhere(): void {
+		$this->createService()->send($this->list, new Recipient('Alice', 'alice@example.com'), new Recipient('Bob', 'bob@example.com'), true);
+
+		$this->assertStringContainsString('translated: This email was sent to a different email address before.', $this->messages[0]->getPlainBody());
+	}
+
+	public function testSendAddressChangeNotice(): void {
+		$this->owner->setSystemEMailAddress('olivia@example.com');
+		$this->listService->update($this->list, senderName: 'Santa', mailBody: 'PARTNER: {partner}');
+
+		$this->createService()->sendAddressChangeNotice($this->list, new Recipient('Alice', 'alice@example.com'), self::OWNER);
+
+		$this->assertCount(1, $this->messages);
+		$message = $this->messages[0];
+		$this->assertSame(['alice@example.com' => 'Alice'], $message->getTo());
+		$this->assertSame([Util::getDefaultEmailAddress('noreply') => 'Santa'], $message->getFrom());
+		$this->assertSame(['olivia@example.com' => 'Olivia Owner'], $message->getReplyTo());
+		$this->assertSame('translated: Your Secret Santa email is sent to a different address', $message->getSubject());
+		$this->assertStringContainsString('translated: Olivia Owner is sending your email of the Secret Santa "Christmas"', $message->getPlainBody());
+		$this->assertStringContainsString('translated: If you do not know why, contact the organizer of the Secret Santa.', $message->getPlainBody());
+		$this->assertStringNotContainsString('PARTNER', $message->getPlainBody(), 'The notice does not contain the text of the list');
+	}
+
 	public function testFailedDelivery(): void {
 		$this->send = static fn (Message $message): array => array_keys($message->getTo());
 
