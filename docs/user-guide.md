@@ -33,6 +33,7 @@ Open the menu of a list in the navigation to **Rename**, **Archive** or **Delete
 A list has two kinds of participants:
 
 - **Nextcloud accounts:** search for the account in **Add a Nextcloud account**.
+  To take part yourself, search for your own name.
   The app uses the name and email address of the account, so they always stay up to date.
   You can only add accounts you could share files with, e.g. only members of your own groups if the administrator restricted sharing.
 - **Guests:** click **Add guest** and enter their name and email address.
