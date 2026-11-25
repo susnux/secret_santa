@@ -47,7 +47,7 @@ final class DrawService {
 	 * @throws InvalidInputException If there are too few participants or not at least two valid draws exist
 	 * @throws InvalidArgumentException If a participant is listed twice
 	 */
-	public function draw(array $participantIds, array $exclusions): array {
+	public function draw(array $participantIds, #[\SensitiveParameter] array $exclusions): array {
 		if (count(array_unique($participantIds)) !== count($participantIds)) {
 			throw new InvalidArgumentException('Every participant can only take part once.');
 		}

@@ -46,7 +46,7 @@ final class PairingMapper {
 		return $pairings;
 	}
 
-	public function insert(SecretSantaList $list, Draw $draw, Pairing $pairing): void {
+	public function insert(SecretSantaList $list, Draw $draw, #[\SensitiveParameter] Pairing $pairing): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->insert(self::TABLE_NAME)
 			->values([

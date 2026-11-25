@@ -14,6 +14,7 @@ use OCA\SecretSanta\Db\SecretSantaList;
 use OCA\SecretSanta\Service\ListService;
 use OCA\SecretSanta\Service\NotificationService;
 use OCA\SecretSanta\Service\Recipient;
+use OCA\SecretSanta\Tests\Unit\LoggedExceptionTrait;
 use OCP\IL10N;
 use OCP\IUser;
 use OCP\IUserManager;
@@ -23,6 +24,7 @@ use OCP\Util;
 use PHPUnit\Framework\TestCase;
 
 final class NotificationServiceTest extends TestCase {
+	use LoggedExceptionTrait;
 
 	private const string OWNER = 'secret-santa-notification-test';
 
@@ -167,5 +169,14 @@ final class NotificationServiceTest extends TestCase {
 		$this->expectException(\RuntimeException::class);
 		$this->expectExceptionMessage('The email could not be sent.');
 		$this->createService()->send($this->list, new Recipient('Alice', 'alice@example.com'), new Recipient('Bob', 'bob@example.com'));
+	}
+
+	public function testPartnerIsNotLoggedIfSendingFails(): void {
+		$this->send = static fn (Message $message): array => throw new \Exception('Connection refused');
+
+		$log = $this->logThrownException(fn () => $this->createService()->send($this->list, new Recipient('Alice', 'alice@example.com'), new Recipient('Bob', 'bob@example.com')));
+		$this->assertStringContainsString('alice@example.com', $log, 'The arguments are logged');
+		$this->assertStringNotContainsString('Bob', $log);
+		$this->assertStringNotContainsString('bob@example.com', $log);
 	}
 }

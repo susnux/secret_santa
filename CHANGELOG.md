@@ -7,6 +7,10 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+### Fixed
+- The Nextcloud log contained the name and email address of the partner of a participant when their email could not be sent, as the stack trace logged the arguments of the functions. The partners, drawn and imported, are now hidden from stack traces.
+
 ## v0.2.0 - 2026-11-25
 ### Added
 - Members of the groups a list is shared with can take over a list whose owner was deleted and become its owner, so it can be shared and deleted again and the emails have a sender name and reply address again.

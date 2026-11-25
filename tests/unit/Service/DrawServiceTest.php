@@ -13,6 +13,7 @@ use OCA\SecretSanta\Db\Exclusion;
 use OCA\SecretSanta\Db\Pairing;
 use OCA\SecretSanta\Exception\InvalidInputException;
 use OCA\SecretSanta\Service\DrawService;
+use OCA\SecretSanta\Tests\Unit\LoggedExceptionTrait;
 use OCP\IL10N;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -20,6 +21,7 @@ use Random\Engine\Mt19937;
 use Random\Randomizer;
 
 final class DrawServiceTest extends TestCase {
+	use LoggedExceptionTrait;
 
 	private function createService(?int $seed = null): DrawService {
 		$l10n = $this->createStub(IL10N::class);
@@ -236,6 +238,15 @@ final class DrawServiceTest extends TestCase {
 			$this->assertSame('No valid draw exists.', $error->getMessage());
 			$this->assertSame('translated: The partners can not be drawn with these exclusions. Remove some exclusions or add more participants.', $error->getHint());
 		}
+	}
+
+	public function testExclusionsAreNotLoggedIfNoDrawExists(): void {
+		[$alice, $bob, $carol] = self::participants(3);
+		$exclusions = [new Exclusion($alice, $bob), new Exclusion($alice, $carol)];
+
+		$log = $this->logThrownException(fn () => $this->createService()->draw([$alice, $bob, $carol], $exclusions));
+		$this->assertStringContainsString('No valid draw exists.', $log);
+		$this->assertStringNotContainsString('"receiverId"', $log);
 	}
 
 	public function testLargeDrawWithManyExclusions(): void {

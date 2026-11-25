@@ -44,7 +44,7 @@ final class NotificationService {
 	 * @param bool $sentElsewhere If the email was sent to a different address of the giver before
 	 * @throws RuntimeException If the email could not be sent
 	 */
-	public function send(SecretSantaList $list, Recipient $giver, Recipient $receiver, bool $sentElsewhere = false): void {
+	public function send(SecretSantaList $list, Recipient $giver, #[\SensitiveParameter] Recipient $receiver, bool $sentElsewhere = false): void {
 		$placeholders = [
 			self::PLACEHOLDER_NAME => $giver->displayName,
 			self::PLACEHOLDER_PARTNER => $receiver->displayName,
