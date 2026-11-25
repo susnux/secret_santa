@@ -7,15 +7,20 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## v0.2.0 - 2026-11-25
+### Added
+- Members of the groups a list is shared with can take over a list whose owner was deleted and become its owner, so it can be shared and deleted again and the emails have a sender name and reply address again.
+- A user guide, linked from the app info
 
 ### Fixed
-
 - Users could not add themselves as participant, as the account search never offered the current user
-- Members of a list could change the email address of a guest and send the email of the guest with their partner to themselves unnoticed. When an email is sent again to a different address, the previous address now gets a notice naming who sent it, and the email says that it was sent to a different address before (#9)
+- Members of a list could change the email address of a guest and send the email of the guest with their partner to themselves unnoticed. When an email is sent again to a different address, the previous address now gets a notice naming who sent it, and the email says that it was sent to a different address before.
+
+### Changed
+- The app is listed in the "Games" category
+
 
 ## v0.1.0 - 2026-11-24
-
 ### Added
 
 - Lists of participants, both Nextcloud accounts and guests with name and email address
