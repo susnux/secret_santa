@@ -151,15 +151,20 @@ final class DrawManager {
 	public function serialize(SecretSantaList $list, Draw $draw): array {
 		$pairings = $this->pairingMapper->getPairings($draw);
 		$participants = $this->participantService->getParticipants($list);
+		// A loop instead of array_map, as the arguments of built-in functions can not be hidden from stack traces
+		$notifications = [];
+		foreach ($pairings as $pairing) {
+			$notifications[] = [
+				'participantId' => $pairing->giverId,
+				'notifiedAt' => $pairing->notifiedAt,
+				'emailChanged' => $this->isEmailChanged($pairing, $participants),
+			];
+		}
 		return [
 			'id' => $draw->getId(),
 			'createdAt' => $draw->getCreatedAt()?->getTimestamp() ?? 0,
 			'outdated' => $this->isOutdated($pairings, $participants),
-			'notifications' => array_map(fn (Pairing $pairing): array => [
-				'participantId' => $pairing->giverId,
-				'notifiedAt' => $pairing->notifiedAt,
-				'emailChanged' => $this->isEmailChanged($pairing, $participants),
-			], $pairings),
+			'notifications' => $notifications,
 		];
 	}
 
@@ -169,7 +174,7 @@ final class DrawManager {
 	 * @param list<Pairing> $pairings The pairings of the draw
 	 * @param list<Participant> $participants The participants of the list
 	 */
-	private function isOutdated(array $pairings, array $participants): bool {
+	private function isOutdated(#[\SensitiveParameter] array $pairings, array $participants): bool {
 		$participantIds = array_map(static fn (Participant $participant): string => $participant->getId(), $participants);
 		foreach ($pairings as $pairing) {
 			if (!in_array($pairing->receiverId, $participantIds, true)) {
@@ -184,7 +189,7 @@ final class DrawManager {
 	 *
 	 * @param list<Participant> $participants The participants of the list
 	 */
-	private function isEmailChanged(Pairing $pairing, array $participants): bool {
+	private function isEmailChanged(#[\SensitiveParameter] Pairing $pairing, array $participants): bool {
 		if ($pairing->notifiedEmail === null) {
 			return false;
 		}
@@ -204,7 +209,7 @@ final class DrawManager {
 	 * @param list<Pairing> $pairings The pairings of the draw
 	 * @throws InvalidArgumentException If the participant did not take part in the draw
 	 */
-	private function findPairing(array $pairings, Participant $giver): Pairing {
+	private function findPairing(#[\SensitiveParameter] array $pairings, Participant $giver): Pairing {
 		foreach ($pairings as $pairing) {
 			if ($pairing->giverId === $giver->getId()) {
 				return $pairing;

@@ -46,7 +46,7 @@ final class ExclusionMapper {
 		return $exclusions;
 	}
 
-	public function insert(SecretSantaList $list, string $giverId, string $receiverId, bool $imported): void {
+	public function insert(SecretSantaList $list, string $giverId, #[\SensitiveParameter] string $receiverId, bool $imported): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->insert(self::TABLE_NAME)
 			->values([

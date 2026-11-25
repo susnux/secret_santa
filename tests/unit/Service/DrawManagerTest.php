@@ -23,6 +23,7 @@ use OCA\SecretSanta\Service\ExclusionService;
 use OCA\SecretSanta\Service\ListService;
 use OCA\SecretSanta\Service\NotificationService;
 use OCA\SecretSanta\Service\ParticipantService;
+use OCA\SecretSanta\Tests\Unit\LoggedExceptionTrait;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IDBConnection;
 use OCP\IL10N;
@@ -36,6 +37,7 @@ use Random\Engine\Mt19937;
 use Random\Randomizer;
 
 final class DrawManagerTest extends TestCase {
+	use LoggedExceptionTrait;
 
 	private const string OWNER = 'secret-santa-draw-manager-test';
 	private const string USER = 'secret-santa-draw-manager-test-user';
@@ -337,6 +339,19 @@ final class DrawManagerTest extends TestCase {
 
 		$this->expectException(\RuntimeException::class);
 		$manager->notify($this->list, $draw, $this->participants['bob'], self::OWNER);
+	}
+
+	public function testPartnerIsNotLoggedIfNotifyFails(): void {
+		$this->addGuests(['alice', 'bob', 'carol', 'dave']);
+		$manager = $this->createManager();
+		$draw = $manager->draw($this->list);
+		$partner = $this->takeSentPartners()['bob'];
+		$this->failingAddresses = ['bob@example.com'];
+
+		$log = $this->logThrownException(fn () => $manager->notify($this->list, $draw, $this->participants['bob'], self::OWNER));
+		$this->assertStringContainsString('bob@example.com', $log, 'The arguments are logged');
+		$this->assertStringNotContainsString($partner, $log);
+		$this->assertStringNotContainsString($this->participants[$partner]->getId(), $log);
 	}
 
 	public function testNotifyOnlyForTheLatestDraw(): void {
