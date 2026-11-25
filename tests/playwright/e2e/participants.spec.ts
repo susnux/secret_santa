@@ -55,4 +55,14 @@ test.describe('Participants', () => {
 			await runOcc(['user:delete', other.userId], { failOnError: false })
 		}
 	})
+
+	test('adds oneself', async ({ secretSantaApp, page, user }) => {
+		await secretSantaApp.section('Participants').getByRole('combobox').fill(user.userId)
+		await page.getByRole('option', { name: user.userId }).click()
+
+		await expect(secretSantaApp.participant(user.userId)).toContainText('No email address, can not be notified')
+		// once participating the user is not offered again
+		await secretSantaApp.section('Participants').getByRole('combobox').fill(user.userId)
+		await expect(page.getByRole('option', { name: user.userId })).toHaveCount(0)
+	})
 })

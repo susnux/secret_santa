@@ -8,6 +8,7 @@ import type { NcSelectUsersModel } from '@nextcloud/vue/components/NcSelectUsers
 import type { IExclusion, IParticipant, ISecretSantaList } from '../models/types.ts'
 
 import { mdiAccountMultipleRemoveOutline, mdiAccountPlusOutline, mdiHistory, mdiPencil, mdiTrashCan } from '@mdi/js'
+import { getCurrentUser } from '@nextcloud/auth'
 import { t } from '@nextcloud/l10n'
 import { spawnDialog } from '@nextcloud/vue/functions/dialog'
 import { computed, ref } from 'vue'
@@ -81,6 +82,26 @@ let searchQuery = ''
 const participatingUsers = computed(() => new Set(props.participants.map(({ userId }) => userId)))
 
 /**
+ * Get the current user as option if they match the query and do not participate yet.
+ * The autocomplete API never returns the current user, as nobody can share with themselves,
+ * but the organizer usually takes part in the gift exchange.
+ *
+ * @param query - The search query
+ */
+function getCurrentUserOptions(query: string): NcSelectUsersModel[] {
+	const user = getCurrentUser()
+	if (!user || participatingUsers.value.has(user.uid)) {
+		return []
+	}
+	const search = query.trim().toLocaleLowerCase()
+	const displayName = user.displayName || user.uid
+	if (![user.uid, displayName].some((value) => value.toLocaleLowerCase().includes(search))) {
+		return []
+	}
+	return [{ id: user.uid, user: user.uid, displayName }]
+}
+
+/**
  * Search the users matching the query, debounced while typing
  *
  * @param query - The search query
@@ -97,9 +118,13 @@ function onSearch(query: string) {
 		try {
 			const users = await searchUsers(query)
 			if (query === searchQuery) {
-				userOptions.value = users
-					.filter(({ id }) => !participatingUsers.value.has(id))
-					.map(({ id, label, subline }) => ({ id, user: id, displayName: label, subname: subline }))
+				const currentUserOptions = getCurrentUserOptions(query)
+				userOptions.value = [
+					...currentUserOptions,
+					...users
+						.filter(({ id }) => !participatingUsers.value.has(id) && !currentUserOptions.some((option) => option.id === id))
+						.map(({ id, label, subline }) => ({ id, user: id, displayName: label, subname: subline })),
+				]
 			}
 		} catch (e) {
 			logger.error('Failed to search users', { error: e })

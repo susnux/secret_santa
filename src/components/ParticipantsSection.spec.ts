@@ -21,6 +21,8 @@ const { addUser, removeImportedExclusions, removeParticipant, searchUsers } = vi
 	searchUsers: vi.fn(),
 }))
 vi.mock('../api/index.ts', () => ({ addUser, removeImportedExclusions, removeParticipant, searchUsers }))
+const { getCurrentUser } = vi.hoisted(() => ({ getCurrentUser: vi.fn() }))
+vi.mock('@nextcloud/auth', () => ({ getCurrentUser }))
 const { spawnDialog } = vi.hoisted(() => ({ spawnDialog: vi.fn() }))
 vi.mock('@nextcloud/vue/functions/dialog', () => ({ spawnDialog }))
 
@@ -83,6 +85,7 @@ describe('ParticipantsSection', () => {
 		removeParticipant.mockReset()
 		searchUsers.mockReset()
 		spawnDialog.mockReset()
+		getCurrentUser.mockReturnValue({ uid: 'olivia', displayName: 'Olivia Organizer', isAdmin: false })
 	})
 
 	afterEach(() => {
@@ -124,6 +127,61 @@ describe('ParticipantsSection', () => {
 		expect(searchUsers).toHaveBeenCalledTimes(1)
 		expect(searchUsers).toHaveBeenCalledWith('da')
 		expect(wrapper.findComponent(NcSelectUsers).props('options')).toEqual([{ id: 'dave', user: 'dave', displayName: 'Dave', subname: 'dave@example.com' }])
+	})
+
+	it.each([
+		['display name', 'ORGAN'],
+		['user id', 'oliv'],
+	])('offers the current user matching the %s, as the autocomplete API never returns them', async (_, query) => {
+		searchUsers.mockResolvedValue([{ id: 'oliver', label: 'Oliver' }])
+		const wrapper = mountSection()
+
+		await wrapper.findComponent(NcSelectUsers).vm.$emit('search', query)
+		vi.advanceTimersByTime(300)
+		await flushPromises()
+
+		expect(wrapper.findComponent(NcSelectUsers).props('options')).toEqual([
+			{ id: 'olivia', user: 'olivia', displayName: 'Olivia Organizer' },
+			{ id: 'oliver', user: 'oliver', displayName: 'Oliver', subname: undefined },
+		])
+	})
+
+	it('does not offer the current user twice', async () => {
+		searchUsers.mockResolvedValue([{ id: 'olivia', label: 'Olivia Organizer', subline: 'olivia@example.com' }])
+		const wrapper = mountSection()
+
+		await wrapper.findComponent(NcSelectUsers).vm.$emit('search', 'olivia')
+		vi.advanceTimersByTime(300)
+		await flushPromises()
+
+		expect(wrapper.findComponent(NcSelectUsers).props('options')).toEqual([{ id: 'olivia', user: 'olivia', displayName: 'Olivia Organizer' }])
+	})
+
+	it('falls back to the user id of the current user without display name', async () => {
+		getCurrentUser.mockReturnValue({ uid: 'olivia', displayName: null, isAdmin: false })
+		searchUsers.mockResolvedValue([])
+		const wrapper = mountSection()
+
+		await wrapper.findComponent(NcSelectUsers).vm.$emit('search', 'oli')
+		vi.advanceTimersByTime(300)
+		await flushPromises()
+
+		expect(wrapper.findComponent(NcSelectUsers).props('options')).toEqual([{ id: 'olivia', user: 'olivia', displayName: 'olivia' }])
+	})
+
+	it.each([
+		['does not match the query', 'olivia', 'dave'],
+		['already participates', 'bob', 'bob'],
+	])('does not offer the current user if they %s', async (_, uid, query) => {
+		getCurrentUser.mockReturnValue({ uid, displayName: uid, isAdmin: false })
+		searchUsers.mockResolvedValue([])
+		const wrapper = mountSection()
+
+		await wrapper.findComponent(NcSelectUsers).vm.$emit('search', query)
+		vi.advanceTimersByTime(300)
+		await flushPromises()
+
+		expect(wrapper.findComponent(NcSelectUsers).props('options')).toEqual([])
 	})
 
 	it('adds the selected user', async () => {
